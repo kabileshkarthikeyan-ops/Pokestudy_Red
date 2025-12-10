@@ -4,6 +4,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import CatchPage from "./pages/CatchPage";
+import EvolvePage from "./pages/EvolvePage";
+import TradePage from "./pages/TradePage";
+import CollectionPage from "./pages/CollectionPage";
+import PokedexPage from "./pages/PokedexPage";
+import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -16,7 +22,12 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/catch" element={<CatchPage />} />
+          <Route path="/evolve" element={<EvolvePage />} />
+          <Route path="/trade" element={<TradePage />} />
+          <Route path="/collection" element={<CollectionPage />} />
+          <Route path="/pokedex" element={<PokedexPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
