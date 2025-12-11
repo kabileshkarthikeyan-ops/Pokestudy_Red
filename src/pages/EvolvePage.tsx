@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sparkles, Coins, ArrowRight } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { useGameState } from '@/hooks/useGameState';
@@ -6,6 +6,7 @@ import { getPokemonById } from '@/data/pokemonDatabase';
 import { PokemonCard } from '@/components/PokemonCard';
 import { PokemonSprite } from '@/components/PokemonSprite';
 import { TypeBadge } from '@/components/TypeBadge';
+import { EvolutionAnimation } from '@/components/EvolutionAnimation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -13,13 +14,16 @@ import { useToast } from '@/hooks/use-toast';
 import { OwnedPokemon } from '@/types/pokemon';
 import { cn } from '@/lib/utils';
 
+type EvolutionStage = 'idle' | 'glowing' | 'transforming' | 'complete';
+
 const EvolvePage = () => {
   const { state, evolvePokemon } = useGameState();
   const { toast } = useToast();
   const [selectedPokemon, setSelectedPokemon] = useState<OwnedPokemon | null>(null);
-  const [isEvolving, setIsEvolving] = useState(false);
+  const [evolutionStage, setEvolutionStage] = useState<EvolutionStage>('idle');
   const [showBranchDialog, setShowBranchDialog] = useState(false);
   const [evolvedPokemon, setEvolvedPokemon] = useState<OwnedPokemon | null>(null);
+  const [targetEvolutionId, setTargetEvolutionId] = useState<number | null>(null);
 
   // Get pokemon that can evolve
   const evolvablePokemon = state.ownedPokemon.filter(p => {
@@ -28,32 +32,52 @@ const EvolvePage = () => {
   });
 
   const selectedSpecies = selectedPokemon ? getPokemonById(selectedPokemon.speciesId) : null;
+  const evolvedSpecies = evolvedPokemon ? getPokemonById(evolvedPokemon.speciesId) : null;
 
   const handleEvolve = async (targetId?: number) => {
     if (!selectedPokemon || state.coins < 2) return;
 
-    setShowBranchDialog(false);
-    setIsEvolving(true);
+    const evolutionTarget = targetId || targetEvolutionId || selectedSpecies?.evolvesTo?.[0];
+    if (!evolutionTarget) return;
 
+    setShowBranchDialog(false);
+    setTargetEvolutionId(evolutionTarget);
+
+    // Phase 1: Glowing (1.5s)
+    setEvolutionStage('glowing');
     await new Promise(r => setTimeout(r, 1500));
 
-    const result = evolvePokemon(selectedPokemon.uniqueId, targetId);
+    // Phase 2: Transforming (1.5s)
+    setEvolutionStage('transforming');
+    await new Promise(r => setTimeout(r, 1500));
+
+    // Actually evolve
+    const result = evolvePokemon(selectedPokemon.uniqueId, evolutionTarget);
     
     if (result) {
       setEvolvedPokemon(result);
+      setEvolutionStage('complete');
+      
       const newSpecies = getPokemonById(result.speciesId);
       toast({
         title: `Evolved into ${newSpecies?.name}!`,
         description: 'Congratulations on the evolution!',
       });
+    } else {
+      setEvolutionStage('idle');
+      toast({
+        title: 'Evolution failed',
+        description: 'Something went wrong.',
+        variant: 'destructive',
+      });
     }
-
-    setIsEvolving(false);
   };
 
   const handleSelectPokemon = (pokemon: OwnedPokemon) => {
     setSelectedPokemon(pokemon);
     setEvolvedPokemon(null);
+    setEvolutionStage('idle');
+    setTargetEvolutionId(null);
   };
 
   const handleEvolveClick = () => {
@@ -62,13 +86,15 @@ const EvolvePage = () => {
     if (selectedSpecies.evolutionBranch && selectedSpecies.evolvesTo && selectedSpecies.evolvesTo.length > 1) {
       setShowBranchDialog(true);
     } else {
-      handleEvolve();
+      handleEvolve(selectedSpecies.evolvesTo?.[0]);
     }
   };
 
   const resetSelection = () => {
     setSelectedPokemon(null);
     setEvolvedPokemon(null);
+    setEvolutionStage('idle');
+    setTargetEvolutionId(null);
   };
 
   return (
@@ -81,70 +107,58 @@ const EvolvePage = () => {
           </p>
         </div>
 
-        {/* Evolution Preview */}
-        {selectedPokemon && selectedSpecies && (
+        {/* Evolution Animation Area */}
+        {selectedPokemon && selectedSpecies && evolutionStage !== 'idle' && (
           <Card className="relative overflow-hidden">
-            <div className={cn(
-              'absolute inset-0 transition-all duration-1000',
-              isEvolving ? 'bg-white/80' : 'bg-gradient-to-br from-pokemon-psychic/10 to-pokemon-fairy/10'
-            )} />
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-cyan-400/10 to-purple-500/10" />
+            <CardContent className="relative py-8 flex justify-center">
+              <EvolutionAnimation
+                fromPokemonId={selectedSpecies.id}
+                toPokemonId={targetEvolutionId || selectedSpecies.evolvesTo?.[0] || 0}
+                fromName={selectedSpecies.name}
+                toName={getPokemonById(targetEvolutionId || selectedSpecies.evolvesTo?.[0] || 0)?.name || ''}
+                stage={evolutionStage}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Evolution Preview (before animation) */}
+        {selectedPokemon && selectedSpecies && evolutionStage === 'idle' && (
+          <Card className="relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-pokemon-psychic/10 to-pokemon-fairy/10" />
             <CardContent className="relative py-6">
               <div className="flex items-center justify-center gap-4">
                 {/* Current Pokemon */}
-                <div className={cn(
-                  'text-center transition-all duration-500',
-                  isEvolving && 'evolution-glow'
-                )}>
+                <div className="text-center">
                   <PokemonSprite
                     pokemonId={selectedSpecies.id}
                     name={selectedSpecies.name}
-                    className={cn(
-                      'w-24 h-24 mx-auto transition-opacity duration-500',
-                      evolvedPokemon && 'opacity-30'
-                    )}
+                    className="w-24 h-24 mx-auto"
                   />
                   <p className="font-semibold mt-2">{selectedSpecies.name}</p>
                 </div>
 
                 {/* Arrow */}
-                <div className={cn(
-                  'p-2 rounded-full bg-primary/20',
-                  isEvolving && 'animate-pulse'
-                )}>
+                <div className="p-2 rounded-full bg-primary/20">
                   <ArrowRight className="w-6 h-6 text-primary" />
                 </div>
 
-                {/* Evolution */}
-                {evolvedPokemon ? (
-                  <div className="text-center animate-scale-in">
-                    <PokemonSprite
-                      pokemonId={evolvedPokemon.speciesId}
-                      name={getPokemonById(evolvedPokemon.speciesId)?.name || ''}
-                      className="w-24 h-24 mx-auto"
-                      animate
-                    />
-                    <p className="font-semibold mt-2">
-                      {getPokemonById(evolvedPokemon.speciesId)?.name}
-                    </p>
+                {/* Evolution target */}
+                {selectedSpecies.evolutionBranch ? (
+                  <div className="w-24 h-24 mx-auto flex items-center justify-center bg-muted/50 rounded-lg">
+                    <span className="text-sm text-muted-foreground text-center">Choose evolution</span>
                   </div>
-                ) : selectedSpecies.evolvesTo && selectedSpecies.evolvesTo.length > 0 ? (
+                ) : selectedSpecies.evolvesTo && selectedSpecies.evolvesTo[0] ? (
                   <div className="text-center">
-                    {selectedSpecies.evolutionBranch ? (
-                      <div className="w-24 h-24 mx-auto flex items-center justify-center bg-muted/50 rounded-lg">
-                        <span className="text-sm text-muted-foreground">Multiple options</span>
-                      </div>
-                    ) : (
-                      <>
-                        <PokemonSprite
-                          pokemonId={selectedSpecies.evolvesTo[0]}
-                          name={getPokemonById(selectedSpecies.evolvesTo[0])?.name || ''}
-                          className="w-24 h-24 mx-auto opacity-50"
-                        />
-                        <p className="font-semibold mt-2 opacity-50">
-                          {getPokemonById(selectedSpecies.evolvesTo[0])?.name}
-                        </p>
-                      </>
-                    )}
+                    <PokemonSprite
+                      pokemonId={selectedSpecies.evolvesTo[0]}
+                      name={getPokemonById(selectedSpecies.evolvesTo[0])?.name || ''}
+                      className="w-24 h-24 mx-auto opacity-50"
+                    />
+                    <p className="font-semibold mt-2 opacity-50">
+                      {getPokemonById(selectedSpecies.evolvesTo[0])?.name}
+                    </p>
                   </div>
                 ) : null}
               </div>
@@ -152,8 +166,26 @@ const EvolvePage = () => {
           </Card>
         )}
 
+        {/* Success State */}
+        {evolutionStage === 'complete' && evolvedSpecies && (
+          <Card className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/30">
+            <CardContent className="py-6 text-center">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <Sparkles className="w-6 h-6 text-yellow-500" />
+                <span className="text-xl font-bold">Evolution Complete!</span>
+                <Sparkles className="w-6 h-6 text-yellow-500" />
+              </div>
+              <div className="flex justify-center gap-2 mb-2">
+                {evolvedSpecies.types.map(type => (
+                  <TypeBadge key={type} type={type} />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Action Buttons */}
-        {selectedPokemon && !evolvedPokemon && (
+        {selectedPokemon && evolutionStage === 'idle' && (
           <div className="flex gap-3">
             <Button
               variant="outline"
@@ -164,7 +196,7 @@ const EvolvePage = () => {
             </Button>
             <Button
               onClick={handleEvolveClick}
-              disabled={state.coins < 2 || isEvolving}
+              disabled={state.coins < 2}
               className="flex-1"
             >
               <Sparkles className="w-4 h-4 mr-2" />
@@ -173,7 +205,7 @@ const EvolvePage = () => {
           </div>
         )}
 
-        {evolvedPokemon && (
+        {evolutionStage === 'complete' && (
           <Button onClick={resetSelection} className="w-full">
             Evolve Another
           </Button>
