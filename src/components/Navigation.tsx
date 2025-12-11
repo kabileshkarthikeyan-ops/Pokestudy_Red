@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Target, Sparkles, ArrowLeftRight, Grid3X3, BookOpen, Settings } from 'lucide-react';
+import { Home, Target, Sparkles, ArrowLeftRight, Grid3X3, BookOpen, PawPrint, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -7,9 +7,10 @@ const navItems = [
   { path: '/catch', icon: Target, label: 'Catch' },
   { path: '/evolve', icon: Sparkles, label: 'Evolve' },
   { path: '/trade', icon: ArrowLeftRight, label: 'Trade' },
-  { path: '/collection', icon: Grid3X3, label: 'Collection' },
-  { path: '/pokedex', icon: BookOpen, label: 'Pokédex' },
-  { path: '/settings', icon: Settings, label: 'Settings' },
+  { path: '/collection', icon: Grid3X3, label: 'Box' },
+  { path: '/pokedex', icon: BookOpen, label: 'Dex' },
+  { path: '/roaming', icon: PawPrint, label: 'Roam' },
+  { path: '/settings', icon: Settings, label: 'Set' },
 ];
 
 export const Navigation = () => {

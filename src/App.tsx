@@ -9,6 +9,7 @@ import EvolvePage from "./pages/EvolvePage";
 import TradePage from "./pages/TradePage";
 import CollectionPage from "./pages/CollectionPage";
 import PokedexPage from "./pages/PokedexPage";
+import RoamingPage from "./pages/RoamingPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/trade" element={<TradePage />} />
           <Route path="/collection" element={<CollectionPage />} />
           <Route path="/pokedex" element={<PokedexPage />} />
+          <Route path="/roaming" element={<RoamingPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

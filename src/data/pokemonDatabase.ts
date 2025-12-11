@@ -1,4 +1,5 @@
 import { PokemonSpecies, PokemonType, Rarity } from '@/types/pokemon';
+import { GEN_6_POKEMON, GEN_7_POKEMON } from './gen6_7Pokemon';
 
 // Helper to create pokemon entries
 const pokemon = (
@@ -13,7 +14,17 @@ const pokemon = (
   id, name, types, rarity, evolvesFrom, evolvesTo, evolutionBranch
 });
 
-export const POKEMON_DATABASE: PokemonSpecies[] = [
+// Update Eevee to include Sylveon
+const updateEeveeEvolutions = (db: PokemonSpecies[]): PokemonSpecies[] => {
+  return db.map(p => {
+    if (p.id === 133) {
+      return { ...p, evolvesTo: [134, 135, 136, 196, 197, 470, 471, 700] };
+    }
+    return p;
+  });
+};
+
+const GEN_1_TO_5_DATABASE: PokemonSpecies[] = [
   // Gen 1 (1-151)
   pokemon(1, 'Bulbasaur', ['grass', 'poison'], 'uncommon', undefined, [2]),
   pokemon(2, 'Ivysaur', ['grass', 'poison'], 'rare', 1, [3]),
@@ -673,6 +684,13 @@ export const POKEMON_DATABASE: PokemonSpecies[] = [
   pokemon(648, 'Meloetta', ['normal', 'psychic'], 'mythical'),
   pokemon(649, 'Genesect', ['bug', 'steel'], 'mythical'),
 ];
+
+// Combine all generations and update Eevee evolutions
+export const POKEMON_DATABASE: PokemonSpecies[] = updateEeveeEvolutions([
+  ...GEN_1_TO_5_DATABASE,
+  ...GEN_6_POKEMON,
+  ...GEN_7_POKEMON,
+]);
 
 export const getPokemonById = (id: number): PokemonSpecies | undefined => 
   POKEMON_DATABASE.find(p => p.id === id);

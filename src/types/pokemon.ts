@@ -48,6 +48,8 @@ export interface GameSettings {
   animations: 'full' | 'reduced' | 'off';
   uiScale: 'small' | 'medium' | 'large';
   coinConversion: number; // minutes per coin
+  roamingBackground?: string;
+  purchasedBackgrounds?: string[];
 }
 
 export const DEFAULT_GAME_STATE: GameState = {

@@ -137,6 +137,7 @@ const PokedexPage = () => {
                   name={pokemon.name}
                   className="w-12 h-12 mx-auto"
                   isLocked={!seen}
+                  isSilhouette={seen && !caught}
                 />
                 <p className="text-[10px] text-center mt-1 truncate">
                   {seen ? pokemon.name : '???'}

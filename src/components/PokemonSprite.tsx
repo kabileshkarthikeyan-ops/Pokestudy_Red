@@ -6,6 +6,7 @@ interface PokemonSpriteProps {
   name: string;
   className?: string;
   isLocked?: boolean;
+  isSilhouette?: boolean;
   animate?: boolean;
 }
 
@@ -14,12 +15,10 @@ export const PokemonSprite = ({
   name, 
   className, 
   isLocked = false,
+  isSilhouette = false,
   animate = false 
 }: PokemonSpriteProps) => {
   const [hasError, setHasError] = useState(false);
-  
-  // Format ID with leading zeros (001, 002, etc.)
-  const formattedId = pokemonId.toString().padStart(3, '0');
   
   // Try official Pokemon sprite from PokeAPI
   const spriteUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
@@ -45,6 +44,7 @@ export const PokemonSprite = ({
       className={cn(
         'object-contain pixelated',
         animate && 'pokemon-bounce',
+        isSilhouette && 'brightness-0 opacity-60',
         className
       )}
       onError={() => setHasError(true)}
