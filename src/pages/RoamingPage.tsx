@@ -53,9 +53,6 @@ const RoamingPage = () => {
     ...p,
     species: getPokemonById(p.speciesId),
   })).filter(p => p.species);
-    ...p,
-    species: getPokemonById(p.speciesId),
-  })).filter(p => p.species);
 
   const handlePurchaseBackground = (bg: Background) => {
     if (purchasedBackgrounds.includes(bg.id)) {
