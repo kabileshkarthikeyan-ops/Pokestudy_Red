@@ -71,8 +71,13 @@ export const PokemonCard = ({
 
         {/* Name */}
         <h3 className="text-center font-bold text-sm truncate mb-1">
-          {species.name}
+          {pokemon.nickname || species.name}
         </h3>
+        {pokemon.nickname && (
+          <p className="text-center text-[10px] text-muted-foreground truncate -mt-1 mb-1">
+            ({species.name})
+          </p>
+        )}
 
         {/* Types */}
         <div className="flex justify-center gap-1 mb-2">
