@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { GameState, OwnedPokemon, DEFAULT_GAME_STATE, StudyEntry } from '@/types/pokemon';
 import { POKEMON_DATABASE, RARITY_WEIGHTS, getPokemonById } from '@/data/pokemonDatabase';
+import { getRandomNature } from '@/data/pokemonNatures';
 
 const STORAGE_KEY = 'study-pokedex-state';
 
@@ -60,7 +61,6 @@ export const useGameState = () => {
   const catchPokemon = useCallback((): OwnedPokemon | null => {
     if (state.coins < 3) return null;
 
-    // Weighted random selection
     const totalWeight = Object.values(RARITY_WEIGHTS).reduce((a, b) => a + b, 0);
     let random = Math.random() * totalWeight;
     let selectedRarity: keyof typeof RARITY_WEIGHTS = 'common';
@@ -84,9 +84,11 @@ export const useGameState = () => {
       uniqueId: `${randomPokemon.id}-${Date.now()}`,
       speciesId: randomPokemon.id,
       level: 1,
-      xp: isDuplicate ? 10 : 0, // Duplicates give XP
+      xp: isDuplicate ? 10 : 0,
       caughtAt: Date.now(),
       isFavorite: false,
+      nature: getRandomNature(),
+      friendship: 70,
     };
 
     setState(prev => ({
@@ -143,7 +145,6 @@ export const useGameState = () => {
     const pokemonIndex = state.ownedPokemon.findIndex(p => p.uniqueId === uniqueId);
     if (pokemonIndex === -1) return null;
 
-    // Get a random different pokemon
     const randomSpecies = POKEMON_DATABASE[Math.floor(Math.random() * POKEMON_DATABASE.length)];
     
     const newPokemon: OwnedPokemon = {
@@ -153,6 +154,8 @@ export const useGameState = () => {
       xp: 0,
       caughtAt: Date.now(),
       isFavorite: false,
+      nature: getRandomNature(),
+      friendship: 70,
     };
 
     setState(prev => ({
@@ -196,6 +199,22 @@ export const useGameState = () => {
     }));
   }, []);
 
+  const updatePokemon = useCallback((uniqueId: string, updates: Partial<OwnedPokemon>) => {
+    setState(prev => ({
+      ...prev,
+      ownedPokemon: prev.ownedPokemon.map(p =>
+        p.uniqueId === uniqueId ? { ...p, ...updates } : p
+      ),
+    }));
+  }, []);
+
+  const setRoamingPokemon = useCallback((pokemonIds: string[]) => {
+    setState(prev => ({
+      ...prev,
+      settings: { ...prev.settings, roamingPokemon: pokemonIds },
+    }));
+  }, []);
+
   const updateSettings = useCallback((settings: Partial<GameState['settings']>) => {
     setState(prev => ({
       ...prev,
@@ -224,6 +243,8 @@ export const useGameState = () => {
     toggleFavorite,
     setGroup,
     addCustomGroup,
+    updatePokemon,
+    setRoamingPokemon,
     updateSettings,
     resetGame,
     canTrade,
