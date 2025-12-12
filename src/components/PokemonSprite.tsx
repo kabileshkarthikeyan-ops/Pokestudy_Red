@@ -25,15 +25,19 @@ export const PokemonSprite = ({
   const fallbackUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemonId}.png`;
 
   if (isLocked) {
+    // Show silhouette of actual sprite for unknown Pokemon
     return (
-      <div 
+      <img
+        src={spriteUrl}
+        alt="Unknown Pokemon"
         className={cn(
-          'flex items-center justify-center bg-muted rounded-lg',
+          'object-contain brightness-0 opacity-50',
           className
         )}
-      >
-        <span className="text-6xl opacity-30">?</span>
-      </div>
+        style={{ imageRendering: 'pixelated' }}
+        onError={() => {}}
+        loading="lazy"
+      />
     );
   }
 
@@ -42,11 +46,12 @@ export const PokemonSprite = ({
       src={hasError ? fallbackUrl : spriteUrl}
       alt={name}
       className={cn(
-        'object-contain pixelated',
+        'object-contain',
         animate && 'pokemon-bounce',
-        isSilhouette && 'brightness-0 opacity-60',
+        isSilhouette && 'brightness-0 opacity-70',
         className
       )}
+      style={{ imageRendering: 'pixelated' }}
       onError={() => setHasError(true)}
       loading="lazy"
     />

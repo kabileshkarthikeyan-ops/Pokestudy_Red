@@ -23,6 +23,12 @@ export interface OwnedPokemon {
   caughtAt: number;
   isFavorite: boolean;
   group?: string;
+  nickname?: string;
+  nature?: string;
+  ability?: string;
+  moves?: string[];
+  isRoaming?: boolean;
+  friendship?: number;
 }
 
 export interface GameState {
@@ -50,6 +56,7 @@ export interface GameSettings {
   coinConversion: number; // minutes per coin
   roamingBackground?: string;
   purchasedBackgrounds?: string[];
+  roamingPokemon?: string[]; // uniqueIds of Pokemon set to roam
 }
 
 export const DEFAULT_GAME_STATE: GameState = {
