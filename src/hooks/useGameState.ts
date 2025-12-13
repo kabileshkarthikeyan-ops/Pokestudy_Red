@@ -1,9 +1,109 @@
 import { useState, useEffect, useCallback } from 'react';
-import { GameState, OwnedPokemon, DEFAULT_GAME_STATE, StudyEntry } from '@/types/pokemon';
+import { GameState, OwnedPokemon, DEFAULT_GAME_STATE, StudyEntry, Egg, DailyQuest, ShopItem } from '@/types/pokemon';
 import { POKEMON_DATABASE, RARITY_WEIGHTS, getPokemonById } from '@/data/pokemonDatabase';
 import { getRandomNature } from '@/data/pokemonNatures';
 
 const STORAGE_KEY = 'study-pokedex-state';
+
+// Generate daily shop items based on date seed
+const generateShopItems = (dateSeed: string): ShopItem[] => {
+  const seed = dateSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const random = (index: number) => {
+    const x = Math.sin(seed + index) * 10000;
+    return x - Math.floor(x);
+  };
+
+  const items: ShopItem[] = [];
+  
+  // Bargain Bin (2 common/uncommon)
+  const commonPokemon = POKEMON_DATABASE.filter(p => p.rarity === 'common' || p.rarity === 'uncommon');
+  for (let i = 0; i < 2; i++) {
+    const pokemon = commonPokemon[Math.floor(random(i) * commonPokemon.length)];
+    items.push({
+      id: `bargain-${i}-${dateSeed}`,
+      type: 'bargain',
+      speciesId: pokemon.id,
+      price: 2 + Math.floor(random(i + 10) * 3),
+      purchased: false,
+    });
+  }
+
+  // Premium Shelf (1 rare/starter)
+  const rarePokemon = POKEMON_DATABASE.filter(p => p.rarity === 'rare');
+  const premiumPokemon = rarePokemon[Math.floor(random(100) * rarePokemon.length)];
+  items.push({
+    id: `premium-${dateSeed}`,
+    type: 'premium',
+    speciesId: premiumPokemon.id,
+    price: 8 + Math.floor(random(101) * 5),
+    purchased: false,
+  });
+
+  // Gambler's Box
+  const isShiny = random(200) < 0.01;
+  const isLegendary = random(201) < 0.01;
+  let gamblerPokemon;
+  if (isLegendary) {
+    const legendaries = POKEMON_DATABASE.filter(p => p.rarity === 'legendary' || p.rarity === 'mythical');
+    gamblerPokemon = legendaries[Math.floor(random(202) * legendaries.length)];
+  } else {
+    gamblerPokemon = POKEMON_DATABASE[Math.floor(random(203) * POKEMON_DATABASE.length)];
+  }
+  items.push({
+    id: `gambler-${dateSeed}`,
+    type: 'gambler',
+    speciesId: gamblerPokemon.id,
+    price: 15,
+    purchased: false,
+    isShiny,
+  });
+
+  return items;
+};
+
+// Generate daily quests
+const generateQuests = (): DailyQuest[] => {
+  const questTypes: DailyQuest['type'][] = ['endurance', 'punctuality', 'dedication'];
+  
+  return questTypes.map((type, i) => {
+    let title = '';
+    let description = '';
+    let target = 0;
+    let reward: DailyQuest['reward'] = { type: 'coins', amount: 2 };
+
+    switch (type) {
+      case 'endurance':
+        target = [30, 45, 60][Math.floor(Math.random() * 3)];
+        title = 'Study Marathon';
+        description = `Study for ${target} minutes total today`;
+        reward = { type: 'coins', amount: Math.floor(target / 15) };
+        break;
+      case 'punctuality':
+        target = 8;
+        title = 'Early Bird';
+        description = 'Start studying before 8 AM';
+        reward = { type: 'coins', amount: 3 };
+        break;
+      case 'dedication':
+        target = 90;
+        title = 'Deep Focus';
+        description = `Complete a ${target}+ minute session without breaks`;
+        reward = { type: 'friendship', amount: 10 };
+        break;
+    }
+
+    return {
+      id: `quest-${type}-${Date.now()}-${i}`,
+      type,
+      title,
+      description,
+      target,
+      progress: 0,
+      completed: false,
+      reward,
+    };
+  });
+};
 
 export const useGameState = () => {
   const [state, setState] = useState<GameState>(() => {
@@ -35,22 +135,57 @@ export const useGameState = () => {
     }
   }, [state.lastTradeDate]);
 
+  const getBurnoutMultiplier = useCallback(() => {
+    switch (state.settings.burnoutMode) {
+      case 'vacation': return 0.5;
+      case 'standard': return 1;
+      case 'exam': return 1.5;
+    }
+  }, [state.settings.burnoutMode]);
+
   const addCoins = useCallback((minutes: number) => {
-    const coinsEarned = Math.floor(minutes / state.settings.coinConversion);
+    const multiplier = getBurnoutMultiplier();
+    const effectiveMinutes = Math.floor(minutes * multiplier);
+    const coinsEarned = Math.floor(effectiveMinutes / state.settings.coinConversion);
+    
     const entry: StudyEntry = {
       date: new Date().toISOString(),
       minutes,
       coinsEarned,
     };
+
+    // Update egg incubation
+    const updatedEggs = state.eggs.map(egg => ({
+      ...egg,
+      incubationProgress: Math.min(100, egg.incubationProgress + (minutes / egg.requiredMinutes) * 100),
+    }));
+
+    // Update quest progress
+    const updatedQuests = state.dailyQuests.map(quest => {
+      if (quest.completed) return quest;
+      let newProgress = quest.progress;
+      
+      if (quest.type === 'endurance') {
+        newProgress = quest.progress + minutes;
+      } else if (quest.type === 'dedication' && minutes >= quest.target) {
+        newProgress = quest.target;
+      } else if (quest.type === 'punctuality' && new Date().getHours() < quest.target) {
+        newProgress = quest.target;
+      }
+      
+      return { ...quest, progress: newProgress };
+    });
     
     setState(prev => ({
       ...prev,
       coins: prev.coins + coinsEarned,
       studyHistory: [...prev.studyHistory, entry],
+      eggs: updatedEggs,
+      dailyQuests: updatedQuests,
     }));
     
     return coinsEarned;
-  }, [state.settings.coinConversion]);
+  }, [state.settings.coinConversion, state.eggs, state.dailyQuests, getBurnoutMultiplier]);
 
   const spendCoins = useCallback((amount: number): boolean => {
     if (state.coins < amount) return false;
@@ -233,6 +368,107 @@ export const useGameState = () => {
     return isBefore12 ? !state.tradesToday.before12 : !state.tradesToday.after12;
   }, [state.tradesToday]);
 
+  // Shop functions
+  const refreshShop = useCallback(() => {
+    const today = new Date().toDateString();
+    const items = generateShopItems(today);
+    setState(prev => ({
+      ...prev,
+      dailyShop: items,
+      lastShopDate: today,
+    }));
+  }, []);
+
+  const purchaseShopItem = useCallback((itemId: string): { type: 'pokemon' | 'egg'; speciesId?: number; rarity?: string; isShiny?: boolean } | null => {
+    const item = state.dailyShop.find(i => i.id === itemId);
+    if (!item || item.purchased || state.coins < item.price) return null;
+
+    const purchasedCount = state.dailyShop.filter(i => i.purchased).length;
+    if (purchasedCount >= 2) return null;
+
+    const newPokemon: OwnedPokemon = {
+      uniqueId: `${item.speciesId}-${Date.now()}`,
+      speciesId: item.speciesId!,
+      level: 1,
+      xp: 0,
+      caughtAt: Date.now(),
+      isFavorite: false,
+      nature: getRandomNature(),
+      friendship: 70,
+    };
+
+    setState(prev => ({
+      ...prev,
+      coins: prev.coins - item.price,
+      ownedPokemon: [...prev.ownedPokemon, newPokemon],
+      dailyShop: prev.dailyShop.map(i => i.id === itemId ? { ...i, purchased: true } : i),
+      pokedexSeen: [...new Set([...prev.pokedexSeen, item.speciesId!])],
+      pokedexCaught: [...new Set([...prev.pokedexCaught, item.speciesId!])],
+    }));
+
+    return { type: 'pokemon', speciesId: item.speciesId, isShiny: item.isShiny };
+  }, [state.dailyShop, state.coins]);
+
+  // Incubator functions
+  const hatchEgg = useCallback((eggId: string): OwnedPokemon | null => {
+    const egg = state.eggs.find(e => e.id === eggId);
+    if (!egg || egg.incubationProgress < 100) return null;
+
+    const newPokemon: OwnedPokemon = {
+      uniqueId: `${egg.speciesId}-${Date.now()}`,
+      speciesId: egg.speciesId,
+      level: 1,
+      xp: 0,
+      caughtAt: Date.now(),
+      isFavorite: false,
+      nature: getRandomNature(),
+      friendship: 70,
+    };
+
+    setState(prev => ({
+      ...prev,
+      eggs: prev.eggs.filter(e => e.id !== eggId),
+      ownedPokemon: [...prev.ownedPokemon, newPokemon],
+      pokedexSeen: [...new Set([...prev.pokedexSeen, egg.speciesId])],
+      pokedexCaught: [...new Set([...prev.pokedexCaught, egg.speciesId])],
+    }));
+
+    return newPokemon;
+  }, [state.eggs]);
+
+  // Quest functions
+  const refreshQuests = useCallback(() => {
+    const today = new Date().toDateString();
+    const quests = generateQuests();
+    setState(prev => ({
+      ...prev,
+      dailyQuests: quests,
+      lastQuestDate: today,
+    }));
+  }, []);
+
+  const claimQuestReward = useCallback((questId: string) => {
+    const quest = state.dailyQuests.find(q => q.id === questId);
+    if (!quest || quest.completed || quest.progress < quest.target) return;
+
+    let updates: Partial<GameState> = {
+      dailyQuests: state.dailyQuests.map(q => q.id === questId ? { ...q, completed: true } : q),
+    };
+
+    if (quest.reward.type === 'coins') {
+      updates.coins = state.coins + quest.reward.amount;
+    }
+
+    // Check if all quests completed for stamp
+    const completedAfter = state.dailyQuests.filter(q => q.id === questId || q.completed).length;
+    if (completedAfter === 3) {
+      updates.researchStamps = (state.researchStamps || 0) + 1;
+      updates.questStreak = (state.questStreak || 0) + 1;
+    }
+
+    setState(prev => ({ ...prev, ...updates }));
+  }, [state.dailyQuests, state.coins, state.researchStamps, state.questStreak]);
+
   return {
     state,
     addCoins,
@@ -248,5 +484,11 @@ export const useGameState = () => {
     updateSettings,
     resetGame,
     canTrade,
+    refreshShop,
+    purchaseShopItem,
+    hatchEgg,
+    refreshQuests,
+    claimQuestReward,
+    getBurnoutMultiplier,
   };
 };

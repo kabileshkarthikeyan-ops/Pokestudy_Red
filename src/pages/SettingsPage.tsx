@@ -1,6 +1,7 @@
-import { Settings, Moon, Sun, Zap, Gauge, RotateCcw, Download, Upload } from 'lucide-react';
+import { Settings, Moon, Sun, Zap, Gauge, RotateCcw, Download, Upload, Menu, Battery, BatteryLow, BatteryFull } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { useGameState } from '@/hooks/useGameState';
+import { allNavItems } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -9,11 +10,14 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
+import { BurnoutMode } from '@/types/pokemon';
+import { cn } from '@/lib/utils';
 
 const SettingsPage = () => {
-  const { state, updateSettings, resetGame } = useGameState();
+  const { state, updateSettings, resetGame, getBurnoutMultiplier } = useGameState();
   const { toast } = useToast();
 
   // Apply theme
@@ -85,6 +89,27 @@ const SettingsPage = () => {
     });
   };
 
+  const visibleNavItems = state.settings.visibleNavItems || allNavItems.map(i => i.path);
+
+  const toggleNavItem = (path: string) => {
+    const current = [...visibleNavItems];
+    const index = current.indexOf(path);
+    if (index > -1) {
+      // Don't allow removing Home or Settings
+      if (path === '/' || path === '/settings') return;
+      current.splice(index, 1);
+    } else {
+      current.push(path);
+    }
+    updateSettings({ visibleNavItems: current });
+  };
+
+  const burnoutModes: { value: BurnoutMode; label: string; icon: typeof Battery; description: string }[] = [
+    { value: 'vacation', label: 'Vacation', icon: BatteryLow, description: '50% effort, lower rewards' },
+    { value: 'standard', label: 'Standard', icon: Battery, description: '100% normal mode' },
+    { value: 'exam', label: 'Exam', icon: BatteryFull, description: '150% effort, 1.5x rewards' },
+  ];
+
   return (
     <Layout>
       <div className="space-y-6 animate-fade-in">
@@ -92,6 +117,78 @@ const SettingsPage = () => {
           <Settings className="w-6 h-6" />
           Settings
         </h1>
+
+        {/* Burnout Mode */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Gauge className="w-5 h-5" />
+              Burnout Slider
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-3 gap-2">
+              {burnoutModes.map(({ value, label, icon: Icon, description }) => (
+                <button
+                  key={value}
+                  onClick={() => updateSettings({ burnoutMode: value })}
+                  className={cn(
+                    'p-3 rounded-lg border-2 transition-all text-center',
+                    state.settings.burnoutMode === value
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border hover:border-primary/50'
+                  )}
+                >
+                  <Icon className="w-6 h-6 mx-auto mb-1" />
+                  <p className="font-semibold text-sm">{label}</p>
+                  <p className="text-[10px] text-muted-foreground">{description}</p>
+                </button>
+              ))}
+            </div>
+            <p className="text-sm text-center text-muted-foreground">
+              Current multiplier: <span className="font-bold text-primary">{getBurnoutMultiplier()}x</span>
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Navigation Menu */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Menu className="w-5 h-5" />
+              Navigation Menu
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Choose which items appear in the bottom navigation
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {allNavItems.map(({ path, icon: Icon, label }) => {
+                const isVisible = visibleNavItems.includes(path);
+                const isRequired = path === '/' || path === '/settings';
+                return (
+                  <label
+                    key={path}
+                    className={cn(
+                      'flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all',
+                      isVisible ? 'border-primary bg-primary/5' : 'border-border',
+                      isRequired && 'opacity-50 cursor-not-allowed'
+                    )}
+                  >
+                    <Checkbox
+                      checked={isVisible}
+                      disabled={isRequired}
+                      onCheckedChange={() => toggleNavItem(path)}
+                    />
+                    <Icon className="w-4 h-4" />
+                    <span className="text-sm">{label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Appearance */}
         <Card>
@@ -294,6 +391,14 @@ const SettingsPage = () => {
                 <p className="text-muted-foreground">Study Sessions</p>
                 <p className="font-bold text-lg">{state.studyHistory.length}</p>
               </div>
+              <div>
+                <p className="text-muted-foreground">Research Stamps</p>
+                <p className="font-bold text-lg">{state.researchStamps || 0}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Quest Streak</p>
+                <p className="font-bold text-lg">{state.questStreak || 0} days</p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -302,7 +407,7 @@ const SettingsPage = () => {
         <Card>
           <CardContent className="py-4 text-center text-sm text-muted-foreground">
             <p className="font-semibold text-foreground">Study Time Pokédex</p>
-            <p>Version 1.0.0</p>
+            <p>Version 2.0.0</p>
             <p className="mt-2">Turn study time into Pokémon adventures!</p>
           </CardContent>
         </Card>

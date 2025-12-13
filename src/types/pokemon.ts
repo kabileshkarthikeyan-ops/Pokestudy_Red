@@ -31,6 +31,39 @@ export interface OwnedPokemon {
   friendship?: number;
 }
 
+export type BurnoutMode = 'vacation' | 'standard' | 'exam';
+
+export interface Egg {
+  id: string;
+  speciesId: number;
+  rarity: Rarity;
+  incubationProgress: number; // 0-100
+  requiredMinutes: number;
+  purchasedAt: number;
+  isShiny?: boolean;
+}
+
+export interface DailyQuest {
+  id: string;
+  type: 'endurance' | 'punctuality' | 'dedication';
+  title: string;
+  description: string;
+  target: number;
+  progress: number;
+  completed: boolean;
+  reward: { type: 'coins' | 'friendship' | 'egg'; amount: number };
+}
+
+export interface ShopItem {
+  id: string;
+  type: 'bargain' | 'premium' | 'gambler';
+  speciesId?: number;
+  eggRarity?: Rarity;
+  price: number;
+  purchased: boolean;
+  isShiny?: boolean;
+}
+
 export interface GameState {
   coins: number;
   ownedPokemon: OwnedPokemon[];
@@ -41,6 +74,14 @@ export interface GameState {
   studyHistory: StudyEntry[];
   customGroups: string[];
   settings: GameSettings;
+  // Phase 3 systems
+  eggs: Egg[];
+  dailyQuests: DailyQuest[];
+  dailyShop: ShopItem[];
+  lastShopDate: string;
+  lastQuestDate: string;
+  questStreak: number;
+  researchStamps: number;
 }
 
 export interface StudyEntry {
@@ -53,10 +94,12 @@ export interface GameSettings {
   theme: 'light' | 'dark' | 'amoled';
   animations: 'full' | 'reduced' | 'off';
   uiScale: 'small' | 'medium' | 'large';
-  coinConversion: number; // minutes per coin
+  coinConversion: number;
   roamingBackground?: string;
   purchasedBackgrounds?: string[];
-  roamingPokemon?: string[]; // uniqueIds of Pokemon set to roam
+  roamingPokemon?: string[];
+  burnoutMode: BurnoutMode;
+  visibleNavItems: string[];
 }
 
 export const DEFAULT_GAME_STATE: GameState = {
@@ -72,6 +115,15 @@ export const DEFAULT_GAME_STATE: GameState = {
     theme: 'light',
     animations: 'full',
     uiScale: 'medium',
-    coinConversion: 60, // 60 minutes = 1 coin
+    coinConversion: 60,
+    burnoutMode: 'standard',
+    visibleNavItems: ['/', '/catch', '/evolve', '/trade', '/collection', '/pokedex', '/roaming', '/settings'],
   },
+  eggs: [],
+  dailyQuests: [],
+  dailyShop: [],
+  lastShopDate: '',
+  lastQuestDate: '',
+  questStreak: 0,
+  researchStamps: 0,
 };
