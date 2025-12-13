@@ -29,7 +29,7 @@ export const Navigation = () => {
     <nav className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-border z-50">
       <div className="max-w-lg mx-auto">
         <ScrollArea className="w-full">
-          <div className="flex items-center py-2 px-2 gap-1">
+          <div className="flex items-center py-2 px-2 gap-1 min-w-max">
             {navItems.map(({ path, icon: Icon, label }) => {
               const isActive = location.pathname === path;
               return (

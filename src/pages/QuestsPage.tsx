@@ -40,7 +40,7 @@ const QuestsPage = () => {
   };
 
   const handleClaim = (quest: DailyQuest) => {
-    if (!quest.completed || quest.progress < quest.target) return;
+    if (quest.completed) return;
 
     setClaimingId(quest.id);
     setTimeout(() => {
@@ -131,8 +131,6 @@ const QuestsPage = () => {
           <div className="space-y-3">
             {state.dailyQuests.map((quest) => {
               const Icon = getQuestIcon(quest.type);
-              const progress = Math.min(100, (quest.progress / quest.target) * 100);
-              const isComplete = quest.progress >= quest.target;
               const isClaimed = quest.completed;
 
               return (
@@ -162,20 +160,15 @@ const QuestsPage = () => {
                         <p className="text-sm text-muted-foreground mb-2">
                           {quest.description}
                         </p>
-                        
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-xs">
-                            <span>Progress</span>
-                            <span>{quest.progress} / {quest.target}</span>
-                          </div>
-                          <Progress value={progress} className="h-2" />
-                        </div>
+                        <p className="text-xs text-muted-foreground italic">
+                          Tap "Claim" once you've completed this quest today.
+                        </p>
                       </div>
 
                       <div className="ml-2">
                         {isClaimed ? (
                           <CheckCircle2 className="w-6 h-6 text-green-500" />
-                        ) : isComplete ? (
+                        ) : (
                           <Button 
                             size="sm"
                             onClick={() => handleClaim(quest)}
@@ -183,7 +176,7 @@ const QuestsPage = () => {
                           >
                             {claimingId === quest.id ? '...' : 'Claim'}
                           </Button>
-                        ) : null}
+                        )}
                       </div>
                     </div>
                   </CardContent>
