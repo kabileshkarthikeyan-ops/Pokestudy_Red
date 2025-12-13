@@ -110,7 +110,15 @@ export const useGameState = () => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        return { ...DEFAULT_GAME_STATE, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_GAME_STATE,
+          ...parsed,
+          settings: {
+            ...DEFAULT_GAME_STATE.settings,
+            ...(parsed.settings || {}),
+          },
+        };
       } catch {
         return DEFAULT_GAME_STATE;
       }
@@ -136,17 +144,23 @@ export const useGameState = () => {
   }, [state.lastTradeDate]);
 
   const getBurnoutMultiplier = useCallback(() => {
-    switch (state.settings.burnoutMode) {
-      case 'vacation': return 0.5;
-      case 'standard': return 1;
-      case 'exam': return 1.5;
+    const mode = state.settings.burnoutMode ?? 'standard';
+    switch (mode) {
+      case 'vacation':
+        return 0.5;
+      case 'exam':
+        return 1.5;
+      case 'standard':
+      default:
+        return 1;
     }
   }, [state.settings.burnoutMode]);
 
   const addCoins = useCallback((minutes: number) => {
-    const multiplier = getBurnoutMultiplier();
+    const multiplier = getBurnoutMultiplier() ?? 1;
+    const coinConversion = state.settings.coinConversion || DEFAULT_GAME_STATE.settings.coinConversion;
     const effectiveMinutes = Math.floor(minutes * multiplier);
-    const coinsEarned = Math.floor(effectiveMinutes / state.settings.coinConversion);
+    const coinsEarned = Math.floor(effectiveMinutes / coinConversion);
     
     const entry: StudyEntry = {
       date: new Date().toISOString(),
@@ -159,33 +173,16 @@ export const useGameState = () => {
       ...egg,
       incubationProgress: Math.min(100, egg.incubationProgress + (minutes / egg.requiredMinutes) * 100),
     }));
-
-    // Update quest progress
-    const updatedQuests = state.dailyQuests.map(quest => {
-      if (quest.completed) return quest;
-      let newProgress = quest.progress;
-      
-      if (quest.type === 'endurance') {
-        newProgress = quest.progress + minutes;
-      } else if (quest.type === 'dedication' && minutes >= quest.target) {
-        newProgress = quest.target;
-      } else if (quest.type === 'punctuality' && new Date().getHours() < quest.target) {
-        newProgress = quest.target;
-      }
-      
-      return { ...quest, progress: newProgress };
-    });
     
     setState(prev => ({
       ...prev,
       coins: prev.coins + coinsEarned,
       studyHistory: [...prev.studyHistory, entry],
       eggs: updatedEggs,
-      dailyQuests: updatedQuests,
     }));
     
     return coinsEarned;
-  }, [state.settings.coinConversion, state.eggs, state.dailyQuests, getBurnoutMultiplier]);
+  }, [state.settings.coinConversion, state.eggs, getBurnoutMultiplier]);
 
   const spendCoins = useCallback((amount: number): boolean => {
     if (state.coins < amount) return false;
@@ -449,10 +446,10 @@ export const useGameState = () => {
 
   const claimQuestReward = useCallback((questId: string) => {
     const quest = state.dailyQuests.find(q => q.id === questId);
-    if (!quest || quest.completed || quest.progress < quest.target) return;
+    if (!quest || quest.completed) return;
 
     let updates: Partial<GameState> = {
-      dailyQuests: state.dailyQuests.map(q => q.id === questId ? { ...q, completed: true } : q),
+      dailyQuests: state.dailyQuests.map(q => q.id === questId ? { ...q, completed: true, progress: q.target } : q),
     };
 
     if (quest.reward.type === 'coins') {

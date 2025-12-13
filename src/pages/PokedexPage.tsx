@@ -132,13 +132,18 @@ const PokedexPage = () => {
                     <Check className="w-3 h-3 text-white" />
                   </div>
                 )}
-                <PokemonSprite
-                  pokemonId={pokemon.id}
-                  name={pokemon.name}
-                  className="w-12 h-12 mx-auto"
-                  isLocked={!seen}
-                  isSilhouette={seen && !caught}
-                />
+                {seen ? (
+                  <PokemonSprite
+                    pokemonId={pokemon.id}
+                    name={pokemon.name}
+                    className="w-12 h-12 mx-auto"
+                    isSilhouette={!caught}
+                  />
+                ) : (
+                  <div className="w-12 h-12 mx-auto flex items-center justify-center rounded-full bg-muted text-lg font-bold">
+                    ?
+                  </div>
+                )}
                 <p className="text-[10px] text-center mt-1 truncate">
                   {seen ? pokemon.name : '???'}
                 </p>
