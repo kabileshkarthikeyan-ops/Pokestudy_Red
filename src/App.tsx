@@ -11,6 +11,9 @@ import CollectionPage from "./pages/CollectionPage";
 import PokedexPage from "./pages/PokedexPage";
 import RoamingPage from "./pages/RoamingPage";
 import SettingsPage from "./pages/SettingsPage";
+import ShopPage from "./pages/ShopPage";
+import IncubatorPage from "./pages/IncubatorPage";
+import QuestsPage from "./pages/QuestsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +33,9 @@ const App = () => (
           <Route path="/pokedex" element={<PokedexPage />} />
           <Route path="/roaming" element={<RoamingPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/shop" element={<ShopPage />} />
+          <Route path="/incubator" element={<IncubatorPage />} />
+          <Route path="/quests" element={<QuestsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
