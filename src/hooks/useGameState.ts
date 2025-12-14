@@ -1,11 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { GameState, OwnedPokemon, DEFAULT_GAME_STATE, StudyEntry, Egg, DailyQuest, ShopItem } from '@/types/pokemon';
+import { GameState, OwnedPokemon, DEFAULT_GAME_STATE, StudyEntry, Egg, DailyQuest, ShopItem, DailySummary, QuestCategory } from '@/types/pokemon';
 import { POKEMON_DATABASE, RARITY_WEIGHTS, getPokemonById } from '@/data/pokemonDatabase';
 import { getRandomNature } from '@/data/pokemonNatures';
 
 const STORAGE_KEY = 'study-pokedex-state';
 
-// Generate daily shop items based on date seed
+// Get first-stage Pokemon (no evolvesFrom)
+const getFirstStagePokemon = () => {
+  return POKEMON_DATABASE.filter(p => !p.evolvesFrom);
+};
+
+// Generate daily shop items (Market) - 3-5 Pokemon, 2-3 coins each
 const generateShopItems = (dateSeed: string): ShopItem[] => {
   const seed = dateSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const random = (index: number) => {
@@ -14,95 +19,93 @@ const generateShopItems = (dateSeed: string): ShopItem[] => {
   };
 
   const items: ShopItem[] = [];
+  const itemCount = 3 + Math.floor(random(0) * 3); // 3-5 items
   
-  // Bargain Bin (2 common/uncommon)
-  const commonPokemon = POKEMON_DATABASE.filter(p => p.rarity === 'common' || p.rarity === 'uncommon');
-  for (let i = 0; i < 2; i++) {
-    const pokemon = commonPokemon[Math.floor(random(i) * commonPokemon.length)];
+  // Market Pokemon - mix of rare and uncommon, NOT available via catching
+  const marketPokemon = POKEMON_DATABASE.filter(p => 
+    p.rarity === 'rare' || p.rarity === 'uncommon'
+  );
+
+  for (let i = 0; i < itemCount; i++) {
+    const pokemon = marketPokemon[Math.floor(random(i + 10) * marketPokemon.length)];
+    const isRare = pokemon.rarity === 'rare';
+    
     items.push({
-      id: `bargain-${i}-${dateSeed}`,
-      type: 'bargain',
+      id: `market-${i}-${dateSeed}`,
+      type: isRare ? 'premium' : 'bargain',
       speciesId: pokemon.id,
-      price: 2 + Math.floor(random(i + 10) * 3),
+      price: isRare ? 3 : 2, // 2-3 coins
       purchased: false,
+      isShiny: random(i + 100) < 0.01, // 1% shiny chance
     });
   }
-
-  // Premium Shelf (1 rare/starter)
-  const rarePokemon = POKEMON_DATABASE.filter(p => p.rarity === 'rare');
-  const premiumPokemon = rarePokemon[Math.floor(random(100) * rarePokemon.length)];
-  items.push({
-    id: `premium-${dateSeed}`,
-    type: 'premium',
-    speciesId: premiumPokemon.id,
-    price: 8 + Math.floor(random(101) * 5),
-    purchased: false,
-  });
-
-  // Gambler's Box
-  const isShiny = random(200) < 0.01;
-  const isLegendary = random(201) < 0.01;
-  let gamblerPokemon;
-  if (isLegendary) {
-    const legendaries = POKEMON_DATABASE.filter(p => p.rarity === 'legendary' || p.rarity === 'mythical');
-    gamblerPokemon = legendaries[Math.floor(random(202) * legendaries.length)];
-  } else {
-    gamblerPokemon = POKEMON_DATABASE[Math.floor(random(203) * POKEMON_DATABASE.length)];
-  }
-  items.push({
-    id: `gambler-${dateSeed}`,
-    type: 'gambler',
-    speciesId: gamblerPokemon.id,
-    price: 15,
-    purchased: false,
-    isShiny,
-  });
 
   return items;
 };
 
-// Generate daily quests
+// Generate daily quests with multiple categories
 const generateQuests = (): DailyQuest[] => {
-  const questTypes: DailyQuest['type'][] = ['endurance', 'punctuality', 'dedication'];
+  const quests: DailyQuest[] = [];
   
-  return questTypes.map((type, i) => {
-    let title = '';
-    let description = '';
-    let target = 0;
-    let reward: DailyQuest['reward'] = { type: 'coins', amount: 2 };
+  // Study quests (always included)
+  const studyTargets = [30, 60, 90, 120];
+  const studyTarget = studyTargets[Math.floor(Math.random() * studyTargets.length)];
+  quests.push({
+    id: `quest-study-${Date.now()}`,
+    type: 'study',
+    title: studyTarget >= 90 ? 'Deep Focus' : 'Study Session',
+    description: `Study for ${studyTarget} minutes today`,
+    target: studyTarget,
+    progress: 0,
+    completed: false,
+    reward: { type: 'coins', amount: Math.floor(studyTarget / 30) + 1 },
+  });
 
-    switch (type) {
-      case 'endurance':
-        target = [30, 45, 60][Math.floor(Math.random() * 3)];
-        title = 'Study Marathon';
-        description = `Study for ${target} minutes total today`;
-        reward = { type: 'coins', amount: Math.floor(target / 15) };
-        break;
-      case 'punctuality':
-        target = 8;
-        title = 'Early Bird';
-        description = 'Start studying before 8 AM';
-        reward = { type: 'coins', amount: 3 };
-        break;
-      case 'dedication':
-        target = 90;
-        title = 'Deep Focus';
-        description = `Complete a ${target}+ minute session without breaks`;
-        reward = { type: 'friendship', amount: 10 };
-        break;
-    }
+  // Health quest
+  const healthQuests = [
+    { title: 'Early Bird', desc: 'Start studying before 7 AM', reward: 2 },
+    { title: 'Rest Well', desc: 'Take a break after 60 min of study', reward: 1 },
+    { title: 'Hydration', desc: 'Complete a study session (any length)', reward: 1 },
+  ];
+  const healthQuest = healthQuests[Math.floor(Math.random() * healthQuests.length)];
+  quests.push({
+    id: `quest-health-${Date.now()}`,
+    type: 'health',
+    title: healthQuest.title,
+    description: healthQuest.desc,
+    target: 1,
+    progress: 0,
+    completed: false,
+    reward: { type: 'berries', amount: healthQuest.reward },
+  });
 
-    return {
-      id: `quest-${type}-${Date.now()}-${i}`,
-      type,
-      title,
-      description,
-      target,
+  // Consistency/Challenge quest
+  const isChallenge = Math.random() > 0.5;
+  if (isChallenge) {
+    quests.push({
+      id: `quest-challenge-${Date.now()}`,
+      type: 'challenge',
+      title: 'Marathon Study',
+      description: 'Complete a 2+ hour study session',
+      target: 120,
       progress: 0,
       completed: false,
-      reward,
-    };
-  });
+      reward: { type: 'coins', amount: 5 },
+    });
+  } else {
+    quests.push({
+      id: `quest-consistency-${Date.now()}`,
+      type: 'consistency',
+      title: 'Daily Dedication',
+      description: 'Complete all other quests today',
+      target: 2,
+      progress: 0,
+      completed: false,
+      reward: { type: 'berries', amount: 3 },
+    });
+  }
+
+  return quests;
 };
 
 export const useGameState = () => {
@@ -114,6 +117,7 @@ export const useGameState = () => {
         return {
           ...DEFAULT_GAME_STATE,
           ...parsed,
+          berries: parsed.berries || 0,
           settings: {
             ...DEFAULT_GAME_STATE.settings,
             ...(parsed.settings || {}),
@@ -125,6 +129,9 @@ export const useGameState = () => {
     }
     return DEFAULT_GAME_STATE;
   });
+
+  const [showCoinAnimation, setShowCoinAnimation] = useState(false);
+  const [coinAnimationAmount, setCoinAnimationAmount] = useState(0);
 
   // Save to localStorage whenever state changes
   useEffect(() => {
@@ -169,20 +176,53 @@ export const useGameState = () => {
     };
 
     // Update egg incubation
-    const updatedEggs = state.eggs.map(egg => ({
-      ...egg,
-      incubationProgress: Math.min(100, egg.incubationProgress + (minutes / egg.requiredMinutes) * 100),
-    }));
+    const updatedEggs = state.eggs.map(egg => {
+      if (egg.isPaused) return egg;
+      return {
+        ...egg,
+        incubationProgress: Math.min(100, egg.incubationProgress + (minutes / egg.requiredMinutes) * 100),
+        lastTickAt: Date.now(),
+      };
+    });
+
+    // Update daily summary
+    const today = new Date().toDateString();
+    const currentSummary = state.dailySummary?.date === today ? state.dailySummary : {
+      date: today,
+      minutesStudied: 0,
+      coinsEarned: 0,
+      pokemonCaught: 0,
+      pokemonEvolved: 0,
+      eggsHatched: 0,
+      questsCompleted: 0,
+    };
+    
+    const updatedSummary: DailySummary = {
+      ...currentSummary,
+      minutesStudied: currentSummary.minutesStudied + minutes,
+      coinsEarned: currentSummary.coinsEarned + coinsEarned,
+    };
+
+    // Show coin animation
+    if (coinsEarned > 0) {
+      setCoinAnimationAmount(coinsEarned);
+      setShowCoinAnimation(true);
+    }
     
     setState(prev => ({
       ...prev,
       coins: prev.coins + coinsEarned,
       studyHistory: [...prev.studyHistory, entry],
       eggs: updatedEggs,
+      dailySummary: updatedSummary,
     }));
     
     return coinsEarned;
-  }, [state.settings.coinConversion, state.eggs, getBurnoutMultiplier]);
+  }, [state.settings.coinConversion, state.eggs, state.dailySummary, getBurnoutMultiplier]);
+
+  const hideCoinAnimation = useCallback(() => {
+    setShowCoinAnimation(false);
+  }, []);
 
   const spendCoins = useCallback((amount: number): boolean => {
     if (state.coins < amount) return false;
@@ -193,6 +233,9 @@ export const useGameState = () => {
   const catchPokemon = useCallback((): OwnedPokemon | null => {
     if (state.coins < 3) return null;
 
+    // Favor first-stage Pokemon (80% chance)
+    const useFirstStage = Math.random() < 0.8;
+    
     const totalWeight = Object.values(RARITY_WEIGHTS).reduce((a, b) => a + b, 0);
     let random = Math.random() * totalWeight;
     let selectedRarity: keyof typeof RARITY_WEIGHTS = 'common';
@@ -205,7 +248,16 @@ export const useGameState = () => {
       }
     }
 
-    const eligiblePokemon = POKEMON_DATABASE.filter(p => p.rarity === selectedRarity);
+    let eligiblePokemon = POKEMON_DATABASE.filter(p => p.rarity === selectedRarity);
+    
+    // Filter to first-stage if applicable
+    if (useFirstStage) {
+      const firstStageOnly = eligiblePokemon.filter(p => !p.evolvesFrom);
+      if (firstStageOnly.length > 0) {
+        eligiblePokemon = firstStageOnly;
+      }
+    }
+
     const randomPokemon = eligiblePokemon[Math.floor(Math.random() * eligiblePokemon.length)];
 
     if (!randomPokemon) return null;
@@ -223,16 +275,29 @@ export const useGameState = () => {
       friendship: 70,
     };
 
+    // Update daily summary
+    const today = new Date().toDateString();
+    const currentSummary = state.dailySummary?.date === today ? state.dailySummary : {
+      date: today,
+      minutesStudied: 0,
+      coinsEarned: 0,
+      pokemonCaught: 0,
+      pokemonEvolved: 0,
+      eggsHatched: 0,
+      questsCompleted: 0,
+    };
+
     setState(prev => ({
       ...prev,
       coins: prev.coins - 3,
       ownedPokemon: [...prev.ownedPokemon, newPokemon],
       pokedexSeen: [...new Set([...prev.pokedexSeen, randomPokemon.id])],
       pokedexCaught: [...new Set([...prev.pokedexCaught, randomPokemon.id])],
+      dailySummary: { ...currentSummary, pokemonCaught: currentSummary.pokemonCaught + 1 },
     }));
 
     return newPokemon;
-  }, [state.coins, state.pokedexCaught]);
+  }, [state.coins, state.pokedexCaught, state.dailySummary]);
 
   const evolvePokemon = useCallback((uniqueId: string, targetEvolutionId?: number): OwnedPokemon | null => {
     if (state.coins < 2) return null;
@@ -252,6 +317,17 @@ export const useGameState = () => {
       level: pokemon.level + 1,
     };
 
+    const today = new Date().toDateString();
+    const currentSummary = state.dailySummary?.date === today ? state.dailySummary : {
+      date: today,
+      minutesStudied: 0,
+      coinsEarned: 0,
+      pokemonCaught: 0,
+      pokemonEvolved: 0,
+      eggsHatched: 0,
+      questsCompleted: 0,
+    };
+
     setState(prev => ({
       ...prev,
       coins: prev.coins - 2,
@@ -260,10 +336,11 @@ export const useGameState = () => {
       ),
       pokedexSeen: [...new Set([...prev.pokedexSeen, evolutionId])],
       pokedexCaught: [...new Set([...prev.pokedexCaught, evolutionId])],
+      dailySummary: { ...currentSummary, pokemonEvolved: currentSummary.pokemonEvolved + 1 },
     }));
 
     return evolvedPokemon;
-  }, [state.coins, state.ownedPokemon]);
+  }, [state.coins, state.ownedPokemon, state.dailySummary]);
 
   const tradePokemon = useCallback((uniqueId: string): OwnedPokemon | null => {
     if (state.coins < 1) return null;
@@ -340,6 +417,25 @@ export const useGameState = () => {
     }));
   }, []);
 
+  const feedBerry = useCallback((uniqueId: string) => {
+    if (state.berries < 1) return false;
+    
+    setState(prev => ({
+      ...prev,
+      berries: prev.berries - 1,
+      ownedPokemon: prev.ownedPokemon.map(p =>
+        p.uniqueId === uniqueId 
+          ? { 
+              ...p, 
+              friendship: Math.min(255, (p.friendship || 70) + 5),
+              berryBoost: (p.berryBoost || 0) + 1,
+            } 
+          : p
+      ),
+    }));
+    return true;
+  }, [state.berries]);
+
   const setRoamingPokemon = useCallback((pokemonIds: string[]) => {
     setState(prev => ({
       ...prev,
@@ -380,9 +476,6 @@ export const useGameState = () => {
     const item = state.dailyShop.find(i => i.id === itemId);
     if (!item || item.purchased || state.coins < item.price) return null;
 
-    const purchasedCount = state.dailyShop.filter(i => i.purchased).length;
-    if (purchasedCount >= 2) return null;
-
     const newPokemon: OwnedPokemon = {
       uniqueId: `${item.speciesId}-${Date.now()}`,
       speciesId: item.speciesId!,
@@ -407,6 +500,35 @@ export const useGameState = () => {
   }, [state.dailyShop, state.coins]);
 
   // Incubator functions
+  const addEgg = useCallback((speciesId: number, rarity: string, requiredMinutes: number) => {
+    if (state.eggs.length >= 3) return false;
+    
+    const newEgg: Egg = {
+      id: `egg-${Date.now()}`,
+      speciesId,
+      rarity: rarity as any,
+      incubationProgress: 0,
+      requiredMinutes,
+      purchasedAt: Date.now(),
+      lastTickAt: Date.now(),
+    };
+
+    setState(prev => ({
+      ...prev,
+      eggs: [...prev.eggs, newEgg],
+    }));
+    return true;
+  }, [state.eggs]);
+
+  const toggleEggPause = useCallback((eggId: string) => {
+    setState(prev => ({
+      ...prev,
+      eggs: prev.eggs.map(e => 
+        e.id === eggId ? { ...e, isPaused: !e.isPaused } : e
+      ),
+    }));
+  }, []);
+
   const hatchEgg = useCallback((eggId: string): OwnedPokemon | null => {
     const egg = state.eggs.find(e => e.id === eggId);
     if (!egg || egg.incubationProgress < 100) return null;
@@ -419,7 +541,19 @@ export const useGameState = () => {
       caughtAt: Date.now(),
       isFavorite: false,
       nature: getRandomNature(),
-      friendship: 70,
+      friendship: 100, // Higher friendship for hatched Pokemon
+      isHatched: true,
+    };
+
+    const today = new Date().toDateString();
+    const currentSummary = state.dailySummary?.date === today ? state.dailySummary : {
+      date: today,
+      minutesStudied: 0,
+      coinsEarned: 0,
+      pokemonCaught: 0,
+      pokemonEvolved: 0,
+      eggsHatched: 0,
+      questsCompleted: 0,
     };
 
     setState(prev => ({
@@ -428,10 +562,11 @@ export const useGameState = () => {
       ownedPokemon: [...prev.ownedPokemon, newPokemon],
       pokedexSeen: [...new Set([...prev.pokedexSeen, egg.speciesId])],
       pokedexCaught: [...new Set([...prev.pokedexCaught, egg.speciesId])],
+      dailySummary: { ...currentSummary, eggsHatched: currentSummary.eggsHatched + 1 },
     }));
 
     return newPokemon;
-  }, [state.eggs]);
+  }, [state.eggs, state.dailySummary]);
 
   // Quest functions
   const refreshQuests = useCallback(() => {
@@ -454,17 +589,40 @@ export const useGameState = () => {
 
     if (quest.reward.type === 'coins') {
       updates.coins = state.coins + quest.reward.amount;
+    } else if (quest.reward.type === 'berries') {
+      updates.berries = (state.berries || 0) + quest.reward.amount;
     }
+
+    // Update daily summary
+    const today = new Date().toDateString();
+    const currentSummary = state.dailySummary?.date === today ? state.dailySummary : {
+      date: today,
+      minutesStudied: 0,
+      coinsEarned: 0,
+      pokemonCaught: 0,
+      pokemonEvolved: 0,
+      eggsHatched: 0,
+      questsCompleted: 0,
+    };
+    updates.dailySummary = { ...currentSummary, questsCompleted: currentSummary.questsCompleted + 1 };
 
     // Check if all quests completed for stamp
     const completedAfter = state.dailyQuests.filter(q => q.id === questId || q.completed).length;
-    if (completedAfter === 3) {
+    if (completedAfter === state.dailyQuests.length) {
       updates.researchStamps = (state.researchStamps || 0) + 1;
       updates.questStreak = (state.questStreak || 0) + 1;
     }
 
     setState(prev => ({ ...prev, ...updates }));
-  }, [state.dailyQuests, state.coins, state.researchStamps, state.questStreak]);
+  }, [state.dailyQuests, state.coins, state.berries, state.researchStamps, state.questStreak, state.dailySummary]);
+
+  const showDailySummaryDialog = useCallback(() => {
+    setState(prev => ({ ...prev, showDailySummary: true }));
+  }, []);
+
+  const hideDailySummaryDialog = useCallback(() => {
+    setState(prev => ({ ...prev, showDailySummary: false }));
+  }, []);
 
   return {
     state,
@@ -477,15 +635,23 @@ export const useGameState = () => {
     setGroup,
     addCustomGroup,
     updatePokemon,
+    feedBerry,
     setRoamingPokemon,
     updateSettings,
     resetGame,
     canTrade,
     refreshShop,
     purchaseShopItem,
+    addEgg,
+    toggleEggPause,
     hatchEgg,
     refreshQuests,
     claimQuestReward,
     getBurnoutMultiplier,
+    showCoinAnimation,
+    coinAnimationAmount,
+    hideCoinAnimation,
+    showDailySummaryDialog,
+    hideDailySummaryDialog,
   };
 };

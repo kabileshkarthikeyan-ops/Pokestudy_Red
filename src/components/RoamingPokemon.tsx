@@ -6,6 +6,7 @@ interface RoamingPokemonProps {
   pokemonId: number;
   name: string;
   containerRef: React.RefObject<HTMLDivElement>;
+  flipSprite?: boolean;
 }
 
 type Behavior = 'walking' | 'idle' | 'sleeping' | 'jumping' | 'curious';
@@ -19,7 +20,7 @@ const BEHAVIOR_DURATIONS: Record<Behavior, number> = {
   curious: 2500,
 };
 
-export const RoamingPokemon = ({ pokemonId, name, containerRef }: RoamingPokemonProps) => {
+export const RoamingPokemon = ({ pokemonId, name, containerRef, flipSprite = false }: RoamingPokemonProps) => {
   const [position, setPosition] = useState({ x: 50, y: 50 });
   const [direction, setDirection] = useState<'left' | 'right'>('right');
   const [behavior, setBehavior] = useState<Behavior>('idle');
@@ -104,14 +105,14 @@ export const RoamingPokemon = ({ pokemonId, name, containerRef }: RoamingPokemon
       style={{
         left: `${position.x}%`,
         bottom: '10%',
-        transform: `translateX(-50%) scaleX(${direction === 'left' ? -1 : 1})`,
+        transform: `translateX(-50%) scaleX(${flipSprite ? (direction === 'left' ? 1 : -1) : (direction === 'left' ? -1 : 1)})`,
       }}
     >
       {/* Emote bubble */}
       {showEmote && (
         <div
           className="absolute -top-8 left-1/2 -translate-x-1/2 text-2xl animate-float"
-          style={{ transform: `translateX(-50%) scaleX(${direction === 'left' ? -1 : 1})` }}
+          style={{ transform: `translateX(-50%) scaleX(${flipSprite ? (direction === 'left' ? 1 : -1) : (direction === 'left' ? -1 : 1)})` }}
         >
           {showEmote}
         </div>

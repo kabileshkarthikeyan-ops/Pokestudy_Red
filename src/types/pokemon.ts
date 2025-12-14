@@ -29,9 +29,13 @@ export interface OwnedPokemon {
   moves?: string[];
   isRoaming?: boolean;
   friendship?: number;
+  isHatched?: boolean; // Hatched Pokemon have better stats
+  berryBoost?: number; // Stat boost from berries
 }
 
 export type BurnoutMode = 'vacation' | 'standard' | 'exam';
+
+export type QuestCategory = 'study' | 'health' | 'consistency' | 'challenge';
 
 export interface Egg {
   id: string;
@@ -41,17 +45,19 @@ export interface Egg {
   requiredMinutes: number;
   purchasedAt: number;
   isShiny?: boolean;
+  isPaused?: boolean;
+  lastTickAt?: number;
 }
 
 export interface DailyQuest {
   id: string;
-  type: 'endurance' | 'punctuality' | 'dedication';
+  type: QuestCategory;
   title: string;
   description: string;
   target: number;
   progress: number;
   completed: boolean;
-  reward: { type: 'coins' | 'friendship' | 'egg'; amount: number };
+  reward: { type: 'coins' | 'friendship' | 'berries' | 'pokemon'; amount: number; speciesId?: number };
 }
 
 export interface ShopItem {
@@ -64,8 +70,19 @@ export interface ShopItem {
   isShiny?: boolean;
 }
 
+export interface DailySummary {
+  date: string;
+  minutesStudied: number;
+  coinsEarned: number;
+  pokemonCaught: number;
+  pokemonEvolved: number;
+  eggsHatched: number;
+  questsCompleted: number;
+}
+
 export interface GameState {
   coins: number;
+  berries: number;
   ownedPokemon: OwnedPokemon[];
   pokedexSeen: number[];
   pokedexCaught: number[];
@@ -82,6 +99,8 @@ export interface GameState {
   lastQuestDate: string;
   questStreak: number;
   researchStamps: number;
+  dailySummary?: DailySummary;
+  showDailySummary?: boolean;
 }
 
 export interface StudyEntry {
@@ -104,6 +123,7 @@ export interface GameSettings {
 
 export const DEFAULT_GAME_STATE: GameState = {
   coins: 0,
+  berries: 0,
   ownedPokemon: [],
   pokedexSeen: [],
   pokedexCaught: [],
