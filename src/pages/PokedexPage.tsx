@@ -5,10 +5,12 @@ import { useGameState } from '@/hooks/useGameState';
 import { POKEMON_DATABASE, getPokemonById, getEvolutionChain } from '@/data/pokemonDatabase';
 import { PokemonSprite } from '@/components/PokemonSprite';
 import { TypeBadge } from '@/components/TypeBadge';
+import { StatsDisplay } from '@/components/StatsDisplay';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PokemonSpecies, PokemonType } from '@/types/pokemon';
 import { cn } from '@/lib/utils';
 
@@ -128,7 +130,7 @@ const PokedexPage = () => {
                 )}
               >
                 {caught && (
-                  <div className="absolute top-1 right-1 w-4 h-4 bg-success rounded-full flex items-center justify-center">
+                  <div className="absolute top-1 right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                     <Check className="w-3 h-3 text-white" />
                   </div>
                 )}
@@ -157,7 +159,7 @@ const PokedexPage = () => {
 
         {/* Pokemon Detail Dialog */}
         <Dialog open={!!selectedPokemon} onOpenChange={() => setSelectedPokemon(null)}>
-          <DialogContent className="max-w-sm">
+          <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-center">
                 #{selectedPokemon?.id.toString().padStart(3, '0')} {selectedPokemon?.name}
@@ -165,87 +167,103 @@ const PokedexPage = () => {
             </DialogHeader>
             
             {selectedPokemon && (
-              <div className="space-y-4">
-                <div className="text-center">
-                  <PokemonSprite
-                    pokemonId={selectedPokemon.id}
-                    name={selectedPokemon.name}
-                    className="w-32 h-32 mx-auto"
-                    isLocked={!isSeen(selectedPokemon.id)}
-                  />
-                </div>
+              <Tabs defaultValue="info" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="info">Info</TabsTrigger>
+                  <TabsTrigger value="stats" disabled={!isSeen(selectedPokemon.id)}>Stats</TabsTrigger>
+                </TabsList>
 
-                {isSeen(selectedPokemon.id) ? (
-                  <>
-                    <div className="flex justify-center gap-2">
-                      {selectedPokemon.types.map(type => (
-                        <TypeBadge key={type} type={type} />
-                      ))}
-                    </div>
+                <TabsContent value="info" className="space-y-4 mt-4">
+                  <div className="text-center">
+                    <PokemonSprite
+                      pokemonId={selectedPokemon.id}
+                      name={selectedPokemon.name}
+                      className="w-32 h-32 mx-auto"
+                      isSilhouette={!isSeen(selectedPokemon.id)}
+                    />
+                  </div>
 
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Rarity</p>
-                        <p className="font-semibold capitalize">{selectedPokemon.rarity}</p>
+                  {isSeen(selectedPokemon.id) ? (
+                    <>
+                      <div className="flex justify-center gap-2">
+                        {selectedPokemon.types.map(type => (
+                          <TypeBadge key={type} type={type} />
+                        ))}
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Status</p>
-                        <p className={cn(
-                          'font-semibold',
-                          isCaught(selectedPokemon.id) ? 'text-success' : 'text-muted-foreground'
-                        )}>
-                          {isCaught(selectedPokemon.id) ? 'Caught' : 'Not caught'}
-                        </p>
-                      </div>
-                    </div>
 
-                    {/* Evolution Chain */}
-                    {(selectedPokemon.evolvesFrom || selectedPokemon.evolvesTo) && (
-                      <div>
-                        <p className="text-sm font-medium mb-2">Evolution Chain</p>
-                        <div className="flex items-center justify-center gap-2 flex-wrap">
-                          {getEvolutionChain(selectedPokemon.id).map((evoId, index, arr) => {
-                            const evoPokemon = getPokemonById(evoId);
-                            if (!evoPokemon) return null;
-                            return (
-                              <div key={evoId} className="flex items-center gap-2">
-                                <button
-                                  onClick={() => setSelectedPokemon(evoPokemon)}
-                                  className={cn(
-                                    'p-2 rounded-lg border transition-colors',
-                                    evoId === selectedPokemon.id 
-                                      ? 'border-primary bg-primary/10' 
-                                      : 'border-border hover:border-primary/50'
-                                  )}
-                                >
-                                  <PokemonSprite
-                                    pokemonId={evoPokemon.id}
-                                    name={evoPokemon.name}
-                                    className="w-12 h-12"
-                                    isLocked={!isSeen(evoPokemon.id)}
-                                  />
-                                  <p className="text-[10px] text-center truncate w-14">
-                                    {isSeen(evoPokemon.id) ? evoPokemon.name : '???'}
-                                  </p>
-                                </button>
-                                {index < arr.length - 1 && (
-                                  <span className="text-muted-foreground">→</span>
-                                )}
-                              </div>
-                            );
-                          })}
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Rarity</p>
+                          <p className="font-semibold capitalize">{selectedPokemon.rarity}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Status</p>
+                          <p className={cn(
+                            'font-semibold',
+                            isCaught(selectedPokemon.id) ? 'text-green-500' : 'text-muted-foreground'
+                          )}>
+                            {isCaught(selectedPokemon.id) ? 'Caught' : 'Not caught'}
+                          </p>
                         </div>
                       </div>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-center text-muted-foreground">
-                    This Pokémon hasn't been discovered yet.
-                    <br />
-                    Keep catching to find it!
-                  </p>
-                )}
-              </div>
+
+                      {/* Evolution Chain */}
+                      {(selectedPokemon.evolvesFrom || selectedPokemon.evolvesTo) && (
+                        <div>
+                          <p className="text-sm font-medium mb-2">Evolution Chain</p>
+                          <div className="flex items-center justify-center gap-2 flex-wrap">
+                            {getEvolutionChain(selectedPokemon.id).map((evoId, index, arr) => {
+                              const evoPokemon = getPokemonById(evoId);
+                              if (!evoPokemon) return null;
+                              return (
+                                <div key={evoId} className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => setSelectedPokemon(evoPokemon)}
+                                    className={cn(
+                                      'p-2 rounded-lg border transition-colors',
+                                      evoId === selectedPokemon.id 
+                                        ? 'border-primary bg-primary/10' 
+                                        : 'border-border hover:border-primary/50'
+                                    )}
+                                  >
+                                    <PokemonSprite
+                                      pokemonId={evoPokemon.id}
+                                      name={evoPokemon.name}
+                                      className="w-12 h-12"
+                                      isSilhouette={!isSeen(evoPokemon.id)}
+                                    />
+                                    <p className="text-[10px] text-center truncate w-14">
+                                      {isSeen(evoPokemon.id) ? evoPokemon.name : '???'}
+                                    </p>
+                                  </button>
+                                  {index < arr.length - 1 && (
+                                    <span className="text-muted-foreground">→</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-center text-muted-foreground">
+                      This Pokémon hasn't been discovered yet.
+                      <br />
+                      Keep catching to find it!
+                    </p>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="stats" className="mt-4">
+                  {isSeen(selectedPokemon.id) && (
+                    <div className="space-y-4">
+                      <h3 className="font-semibold text-center">Base Stats</h3>
+                      <StatsDisplay pokemonId={selectedPokemon.id} />
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             )}
           </DialogContent>
         </Dialog>

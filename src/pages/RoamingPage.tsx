@@ -1,12 +1,14 @@
 import { useState, useRef } from 'react';
-import { Palette, Coins, Check, Lock, Maximize2, Minimize2 } from 'lucide-react';
+import { Palette, Coins, Check, Lock, Maximize2, Minimize2, Edit3 } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { useGameState } from '@/hooks/useGameState';
 import { getPokemonById } from '@/data/pokemonDatabase';
 import { RoamingPokemon } from '@/components/RoamingPokemon';
+import { PokemonSprite } from '@/components/PokemonSprite';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -32,31 +34,30 @@ const BACKGROUNDS: Background[] = [
 ];
 
 const RoamingPage = () => {
-  const { state, spendCoins, updateSettings } = useGameState();
+  const { state, spendCoins, updateSettings, setRoamingPokemon } = useGameState();
   const { toast } = useToast();
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedBackground, setSelectedBackground] = useState(
     state.settings.roamingBackground || 'default'
   );
-
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [tempSelection, setTempSelection] = useState<string[]>([]);
 
   const purchasedBackgrounds = state.settings.purchasedBackgrounds || ['default'];
   const activeBackground = BACKGROUNDS.find(bg => bg.id === selectedBackground) || BACKGROUNDS[0];
 
-  // Get roaming Pokemon from settings or first 3
   const roamingIds = state.settings.roamingPokemon || [];
-  const roamingPokemon = (roamingIds.length > 0 
-    ? state.ownedPokemon.filter(p => roamingIds.includes(p.uniqueId))
-    : state.ownedPokemon.slice(0, 3)
-  ).map(p => ({
-    ...p,
-    species: getPokemonById(p.speciesId),
-  })).filter(p => p.species);
+  const roamingPokemon = state.ownedPokemon
+    .filter(p => roamingIds.includes(p.uniqueId))
+    .map(p => ({
+      ...p,
+      species: getPokemonById(p.speciesId),
+    }))
+    .filter(p => p.species);
 
   const handlePurchaseBackground = (bg: Background) => {
     if (purchasedBackgrounds.includes(bg.id)) {
-      // Already owned, just select it
       setSelectedBackground(bg.id);
       updateSettings({ roamingBackground: bg.id });
       return;
@@ -93,6 +94,27 @@ const RoamingPage = () => {
     setIsFullscreen(!isFullscreen);
   };
 
+  const openEditDialog = () => {
+    setTempSelection([...roamingIds]);
+    setShowEditDialog(true);
+  };
+
+  const togglePokemonSelection = (uniqueId: string) => {
+    if (tempSelection.includes(uniqueId)) {
+      setTempSelection(tempSelection.filter(id => id !== uniqueId));
+    } else if (tempSelection.length < 4) {
+      setTempSelection([...tempSelection, uniqueId]);
+    } else {
+      toast({ title: 'Max 4 roaming Pokémon!', variant: 'destructive' });
+    }
+  };
+
+  const saveSelection = () => {
+    setRoamingPokemon(tempSelection);
+    setShowEditDialog(false);
+    toast({ title: 'Roaming Pokémon updated!' });
+  };
+
   if (isFullscreen) {
     return (
       <div
@@ -114,6 +136,7 @@ const RoamingPage = () => {
             pokemonId={pokemon.speciesId}
             name={pokemon.species!.name}
             containerRef={containerRef}
+            flipSprite
           />
         ))}
       </div>
@@ -125,62 +148,67 @@ const RoamingPage = () => {
       <div className="space-y-4 animate-fade-in">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Roaming</h1>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Palette className="w-4 h-4" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Choose Background</DialogTitle>
-              </DialogHeader>
-              <div className="grid grid-cols-2 gap-3 py-4">
-                {BACKGROUNDS.map((bg) => {
-                  const isOwned = purchasedBackgrounds.includes(bg.id);
-                  const isSelected = selectedBackground === bg.id;
+          <div className="flex gap-2">
+            <Button variant="outline" size="icon" onClick={openEditDialog}>
+              <Edit3 className="w-4 h-4" />
+            </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Palette className="w-4 h-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Choose Background</DialogTitle>
+                </DialogHeader>
+                <div className="grid grid-cols-2 gap-3 py-4">
+                  {BACKGROUNDS.map((bg) => {
+                    const isOwned = purchasedBackgrounds.includes(bg.id);
+                    const isSelected = selectedBackground === bg.id;
 
-                  return (
-                    <button
-                      key={bg.id}
-                      onClick={() => handlePurchaseBackground(bg)}
-                      className={cn(
-                        'relative rounded-lg overflow-hidden border-2 transition-all',
-                        isSelected ? 'border-primary ring-2 ring-primary/50' : 'border-border',
-                        !isOwned && 'opacity-80'
-                      )}
-                    >
-                      <img
-                        src={bg.image}
-                        alt={bg.name}
-                        className="w-full h-24 object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                      <div className="absolute bottom-0 left-0 right-0 p-2">
-                        <p className="text-white text-sm font-medium">{bg.name}</p>
-                        {!isOwned && (
-                          <div className="flex items-center gap-1 text-yellow-400 text-xs">
-                            <Coins className="w-3 h-3" />
-                            {bg.price}
+                    return (
+                      <button
+                        key={bg.id}
+                        onClick={() => handlePurchaseBackground(bg)}
+                        className={cn(
+                          'relative rounded-lg overflow-hidden border-2 transition-all',
+                          isSelected ? 'border-primary ring-2 ring-primary/50' : 'border-border',
+                          !isOwned && 'opacity-80'
+                        )}
+                      >
+                        <img
+                          src={bg.image}
+                          alt={bg.name}
+                          className="w-full h-24 object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                        <div className="absolute bottom-0 left-0 right-0 p-2">
+                          <p className="text-white text-sm font-medium">{bg.name}</p>
+                          {!isOwned && (
+                            <div className="flex items-center gap-1 text-yellow-400 text-xs">
+                              <Coins className="w-3 h-3" />
+                              {bg.price}
+                            </div>
+                          )}
+                        </div>
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                            <Check className="w-4 h-4 text-primary-foreground" />
                           </div>
                         )}
-                      </div>
-                      {isSelected && (
-                        <div className="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                          <Check className="w-4 h-4 text-primary-foreground" />
-                        </div>
-                      )}
-                      {!isOwned && (
-                        <div className="absolute top-2 left-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center">
-                          <Lock className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </DialogContent>
-          </Dialog>
+                        {!isOwned && (
+                          <div className="absolute top-2 left-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center">
+                            <Lock className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Roaming Area */}
@@ -190,7 +218,6 @@ const RoamingPage = () => {
             className="relative h-80 bg-cover bg-center bg-no-repeat"
             style={{ backgroundImage: `url(${activeBackground.image})` }}
           >
-            {/* Fullscreen Button */}
             <Button
               variant="secondary"
               size="icon"
@@ -200,10 +227,8 @@ const RoamingPage = () => {
               <Maximize2 className="w-4 h-4" />
             </Button>
 
-            {/* Overlay for better visibility */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
 
-            {/* Roaming Pokemon */}
             {roamingPokemon.length > 0 ? (
               roamingPokemon.map((pokemon) => (
                 <RoamingPokemon
@@ -211,12 +236,13 @@ const RoamingPage = () => {
                   pokemonId={pokemon.speciesId}
                   name={pokemon.species!.name}
                   containerRef={containerRef}
+                  flipSprite
                 />
               ))
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
                 <p className="text-white text-center bg-black/50 px-4 py-2 rounded-lg">
-                  Catch some Pokémon to see them roam!
+                  Tap the edit button to select roaming Pokémon!
                 </p>
               </div>
             )}
@@ -226,7 +252,7 @@ const RoamingPage = () => {
         {/* Info */}
         <Card>
           <CardContent className="py-4">
-            <h3 className="font-semibold mb-2">Roaming Pokémon</h3>
+            <h3 className="font-semibold mb-2">Roaming Pokémon ({roamingPokemon.length}/4)</h3>
             <p className="text-sm text-muted-foreground mb-3">
               Your Pokémon explore with quirky behaviors! Tap fullscreen for immersive view.
             </p>
@@ -242,6 +268,57 @@ const RoamingPage = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Edit Dialog */}
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Select Roaming Pokémon (0-4)</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 py-4">
+              {state.ownedPokemon.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">
+                  Catch some Pokémon first!
+                </p>
+              ) : (
+                state.ownedPokemon.map((pokemon) => {
+                  const species = getPokemonById(pokemon.speciesId);
+                  if (!species) return null;
+                  const isSelected = tempSelection.includes(pokemon.uniqueId);
+
+                  return (
+                    <button
+                      key={pokemon.uniqueId}
+                      onClick={() => togglePokemonSelection(pokemon.uniqueId)}
+                      className={cn(
+                        'w-full flex items-center gap-3 p-2 rounded-lg border transition-all',
+                        isSelected ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted'
+                      )}
+                    >
+                      <Checkbox checked={isSelected} />
+                      <PokemonSprite
+                        pokemonId={species.id}
+                        name={species.name}
+                        className="w-10 h-10"
+                      />
+                      <div className="flex-1 text-left">
+                        <p className="font-medium text-sm">
+                          {pokemon.nickname || species.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Lv.{pokemon.level}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            <Button onClick={saveSelection} className="w-full">
+              Save ({tempSelection.length}/4)
+            </Button>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
