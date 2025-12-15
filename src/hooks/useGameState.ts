@@ -230,7 +230,7 @@ export const useGameState = () => {
     return true;
   }, [state.coins]);
 
-  const catchPokemon = useCallback((): OwnedPokemon | null => {
+  const catchPokemon = useCallback((): { pokemon: OwnedPokemon; isDuplicate: boolean; refundCoins: number } | null => {
     if (state.coins < 3) return null;
 
     // Favor first-stage Pokemon (80% chance)
@@ -263,6 +263,7 @@ export const useGameState = () => {
     if (!randomPokemon) return null;
 
     const isDuplicate = state.pokedexCaught.includes(randomPokemon.id);
+    const refundCoins = isDuplicate ? 2 : 0; // +2 coins refund for duplicate
     
     const newPokemon: OwnedPokemon = {
       uniqueId: `${randomPokemon.id}-${Date.now()}`,
@@ -287,16 +288,25 @@ export const useGameState = () => {
       questsCompleted: 0,
     };
 
+    // Net cost: 3 coins spent - refund for duplicate
+    const netCost = 3 - refundCoins;
+
     setState(prev => ({
       ...prev,
-      coins: prev.coins - 3,
+      coins: prev.coins - netCost,
       ownedPokemon: [...prev.ownedPokemon, newPokemon],
       pokedexSeen: [...new Set([...prev.pokedexSeen, randomPokemon.id])],
       pokedexCaught: [...new Set([...prev.pokedexCaught, randomPokemon.id])],
       dailySummary: { ...currentSummary, pokemonCaught: currentSummary.pokemonCaught + 1 },
     }));
 
-    return newPokemon;
+    // Show refund animation
+    if (refundCoins > 0) {
+      setCoinAnimationAmount(refundCoins);
+      setShowCoinAnimation(true);
+    }
+
+    return { pokemon: newPokemon, isDuplicate, refundCoins };
   }, [state.coins, state.pokedexCaught, state.dailySummary]);
 
   const evolvePokemon = useCallback((uniqueId: string, targetEvolutionId?: number): OwnedPokemon | null => {
@@ -624,6 +634,23 @@ export const useGameState = () => {
     setState(prev => ({ ...prev, showDailySummary: false }));
   }, []);
 
+  // Transfer to professor - delete pokemon for +1 coin
+  const transferToProfessor = useCallback((uniqueId: string): boolean => {
+    const pokemon = state.ownedPokemon.find(p => p.uniqueId === uniqueId);
+    if (!pokemon) return false;
+
+    setState(prev => ({
+      ...prev,
+      coins: prev.coins + 1,
+      ownedPokemon: prev.ownedPokemon.filter(p => p.uniqueId !== uniqueId),
+    }));
+
+    setCoinAnimationAmount(1);
+    setShowCoinAnimation(true);
+
+    return true;
+  }, [state.ownedPokemon]);
+
   return {
     state,
     addCoins,
@@ -653,5 +680,6 @@ export const useGameState = () => {
     hideCoinAnimation,
     showDailySummaryDialog,
     hideDailySummaryDialog,
+    transferToProfessor,
   };
 };

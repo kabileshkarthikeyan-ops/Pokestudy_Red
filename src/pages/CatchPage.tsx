@@ -40,10 +40,10 @@ const CatchPage = () => {
     await new Promise(r => setTimeout(r, 2000));
     
     // Phase 3: Caught animation
-    const pokemon = catchPokemon();
+    const result = catchPokemon();
     
-    if (pokemon) {
-      setCaughtPokemon(pokemon);
+    if (result) {
+      setCaughtPokemon(result.pokemon);
       setCatchState('caught');
       
       // Create celebration particles
@@ -59,10 +59,13 @@ const CatchPage = () => {
       await new Promise(r => setTimeout(r, 1500));
       setCatchState('reveal');
       
-      const species = getPokemonById(pokemon.speciesId);
+      const species = getPokemonById(result.pokemon.speciesId);
+      const description = result.isDuplicate 
+        ? `+${result.refundCoins} coin refund (duplicate!)` 
+        : 'New Pokédex entry!';
       toast({
         title: `Caught ${species?.name}!`,
-        description: pokemon.xp > 0 ? '+10 XP (duplicate)' : 'New Pokédex entry!',
+        description,
       });
     } else {
       setCatchState('idle');
