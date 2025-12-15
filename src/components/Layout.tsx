@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { Navigation } from './Navigation';
 import { CoinCounter } from './CoinCounter';
 import { useGameState } from '@/hooks/useGameState';
@@ -7,8 +7,39 @@ interface LayoutProps {
   children: ReactNode;
 }
 
+// Text size classes
+const TEXT_SIZE_CLASSES = {
+  small: 'text-sm',
+  medium: 'text-base',
+  large: 'text-lg',
+};
+
+// Popup size classes (for dialog max-width)
+const POPUP_SIZE_STYLES = {
+  compact: '--popup-max-width: 20rem',
+  normal: '--popup-max-width: 28rem',
+  large: '--popup-max-width: 36rem',
+};
+
 export const Layout = ({ children }: LayoutProps) => {
   const { state } = useGameState();
+  
+  // Apply text size and popup size to document
+  useEffect(() => {
+    const root = document.documentElement;
+    const textSize = state.settings.textSize || 'medium';
+    const popupSize = state.settings.popupSize || 'normal';
+    
+    // Remove old text size classes
+    root.classList.remove('text-sm', 'text-base', 'text-lg');
+    root.classList.add(TEXT_SIZE_CLASSES[textSize]);
+    
+    // Set popup size CSS variable
+    root.style.setProperty('--popup-max-width', 
+      popupSize === 'compact' ? '20rem' : 
+      popupSize === 'large' ? '36rem' : '28rem'
+    );
+  }, [state.settings.textSize, state.settings.popupSize]);
 
   return (
     <div className="min-h-screen bg-background pb-20">

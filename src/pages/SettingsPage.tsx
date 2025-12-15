@@ -240,6 +240,58 @@ const SettingsPage = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="flex items-center justify-between">
+              <Label>Sprite Size</Label>
+              <Select 
+                value={state.settings.spriteSize || 'medium'} 
+                onValueChange={(v) => updateSettings({ spriteSize: v as any })}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="small">Small (75%)</SelectItem>
+                  <SelectItem value="medium">Medium (100%)</SelectItem>
+                  <SelectItem value="large">Large (125%)</SelectItem>
+                  <SelectItem value="xlarge">X-Large (150%)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label>Text Size</Label>
+              <Select 
+                value={state.settings.textSize || 'medium'} 
+                onValueChange={(v) => updateSettings({ textSize: v as any })}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="small">Small</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="large">Large</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label>Popup Size</Label>
+              <Select 
+                value={state.settings.popupSize || 'normal'} 
+                onValueChange={(v) => updateSettings({ popupSize: v as any })}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="compact">Compact</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="large">Large</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
 
