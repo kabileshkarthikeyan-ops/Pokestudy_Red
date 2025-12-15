@@ -1,4 +1,4 @@
-# Welcome to your Lovable project
+# This app is made by AI
 
 ## Project info
 
