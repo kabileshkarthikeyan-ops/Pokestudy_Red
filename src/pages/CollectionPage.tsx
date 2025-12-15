@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Grid3X3, Star, Filter, SortAsc, Edit3, Heart, Footprints } from 'lucide-react';
+import { Grid3X3, Star, Filter, SortAsc, Edit3, Heart, Footprints, Send, Book } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { useGameState } from '@/hooks/useGameState';
 import { getPokemonById } from '@/data/pokemonDatabase';
@@ -7,12 +7,14 @@ import { getNatureById, NATURES } from '@/data/pokemonNatures';
 import { PokemonCard } from '@/components/PokemonCard';
 import { PokemonSprite } from '@/components/PokemonSprite';
 import { TypeBadge } from '@/components/TypeBadge';
+import { StatsDisplay } from '@/components/StatsDisplay';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { OwnedPokemon } from '@/types/pokemon';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -37,8 +39,9 @@ const COMMON_ABILITIES = [
 ];
 
 const CollectionPage = () => {
-  const { state, toggleFavorite, setGroup, addCustomGroup, updatePokemon, setRoamingPokemon } = useGameState();
+  const { state, toggleFavorite, setGroup, addCustomGroup, updatePokemon, setRoamingPokemon, transferToProfessor } = useGameState();
   const { toast } = useToast();
+  const [showPokedexDialog, setShowPokedexDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('recent');
   const [filterBy, setFilterBy] = useState<FilterOption>('all');
@@ -139,6 +142,18 @@ const CollectionPage = () => {
       }
       
       setRoamingPokemon(newRoamingIds);
+    }
+  };
+
+  const handleTransfer = () => {
+    if (selectedPokemon) {
+      const species = getPokemonById(selectedPokemon.speciesId);
+      transferToProfessor(selectedPokemon.uniqueId);
+      setSelectedPokemon(null);
+      toast({ 
+        title: `${species?.name} sent to Professor!`,
+        description: '+1 coin received',
+      });
     }
   };
 
@@ -419,8 +434,80 @@ const CollectionPage = () => {
                   <p className="text-xs text-center text-muted-foreground">
                     Caught: {new Date(selectedPokemon.caughtAt).toLocaleDateString()}
                   </p>
+
+                  {/* Pokedex Button */}
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setShowPokedexDialog(true)}
+                  >
+                    <Book className="w-4 h-4 mr-2" />
+                    View Pokédex Entry
+                  </Button>
+
+                  {/* Transfer to Professor */}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" className="w-full">
+                        <Send className="w-4 h-4 mr-2" />
+                        Transfer to Professor (+1 coin)
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Transfer {selectedSpecies?.name}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This Pokémon will be sent to the Professor and you'll receive 1 coin. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleTransfer}>Transfer</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </TabsContent>
               </Tabs>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Pokedex Entry Dialog */}
+        <Dialog open={showPokedexDialog} onOpenChange={setShowPokedexDialog}>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-center">
+                #{selectedSpecies?.id.toString().padStart(3, '0')} {selectedSpecies?.name}
+              </DialogTitle>
+            </DialogHeader>
+            {selectedSpecies && (
+              <div className="space-y-4">
+                <div className="text-center">
+                  <PokemonSprite
+                    pokemonId={selectedSpecies.id}
+                    name={selectedSpecies.name}
+                    className="w-32 h-32 mx-auto"
+                    animate
+                  />
+                </div>
+                <div className="flex justify-center gap-2">
+                  {selectedSpecies.types.map(type => (
+                    <TypeBadge key={type} type={type} />
+                  ))}
+                </div>
+                <StatsDisplay pokemonId={selectedSpecies.id} />
+                <Card className="bg-muted/50">
+                  <CardContent className="py-3 text-sm">
+                    <p className="capitalize"><strong>Rarity:</strong> {selectedSpecies.rarity}</p>
+                    {selectedSpecies.evolvesFrom && (
+                      <p><strong>Evolves from:</strong> #{selectedSpecies.evolvesFrom.toString().padStart(3, '0')}</p>
+                    )}
+                    {selectedSpecies.evolvesTo && selectedSpecies.evolvesTo.length > 0 && (
+                      <p><strong>Evolves to:</strong> {selectedSpecies.evolvesTo.map(id => `#${id.toString().padStart(3, '0')}`).join(', ')}</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </DialogContent>
         </Dialog>
