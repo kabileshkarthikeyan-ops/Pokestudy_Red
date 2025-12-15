@@ -113,6 +113,9 @@ export interface GameSettings {
   theme: 'light' | 'dark' | 'amoled';
   animations: 'full' | 'reduced' | 'off';
   uiScale: 'small' | 'medium' | 'large';
+  spriteSize: 'small' | 'medium' | 'large' | 'xlarge';
+  textSize: 'small' | 'medium' | 'large';
+  popupSize: 'compact' | 'normal' | 'large';
   coinConversion: number;
   roamingBackground?: string;
   purchasedBackgrounds?: string[];
@@ -135,6 +138,9 @@ export const DEFAULT_GAME_STATE: GameState = {
     theme: 'light',
     animations: 'full',
     uiScale: 'medium',
+    spriteSize: 'medium',
+    textSize: 'medium',
+    popupSize: 'normal',
     coinConversion: 60,
     burnoutMode: 'standard',
     visibleNavItems: ['/', '/catch', '/evolve', '/trade', '/collection', '/pokedex', '/roaming', '/settings'],

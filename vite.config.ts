@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'backgrounds/**/*', 'sprites/**/*'],
+      includeAssets: ['favicon.ico', 'backgrounds/**/*', 'sprites/**/*', 'icon-192.png', 'icon-512.png'],
       manifest: {
         name: 'StudyMon Dex',
         short_name: 'StudyMon',
@@ -48,13 +48,26 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ['**/*.{js,css,html,ico,png,jpg,svg,webp}'],
         runtimeCaching: [
           {
+            // Cache local sprites
+            urlPattern: /\/sprites\/\d+\.png$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'local-sprites',
+              expiration: {
+                maxEntries: 1000,
+                maxAgeSeconds: 60 * 60 * 24 * 365
+              }
+            }
+          },
+          {
+            // Fallback cache for online sprites (if local fails)
             urlPattern: /^https:\/\/raw\.githubusercontent\.com\/PokeAPI\/.*/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'pokemon-sprites',
+              cacheName: 'pokemon-sprites-fallback',
               expiration: {
                 maxEntries: 1000,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365
               },
               cacheableResponse: {
                 statuses: [0, 200]
