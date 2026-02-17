@@ -28,7 +28,11 @@ const TradePage = () => {
 
     setIsTrading(true);
 
-    await new Promise(r => setTimeout(r, 1500));
+    // Dramatic trade animation - swirl out (2s)
+    await new Promise(r => setTimeout(r, 2000));
+
+    // Flash transition
+    await new Promise(r => setTimeout(r, 500));
 
     const result = tradePokemon(selectedPokemon.uniqueId);
     
@@ -36,6 +40,10 @@ const TradePage = () => {
       setTradedPokemon(result);
       const newSpecies = getPokemonById(result.speciesId);
       const oldSpecies = getPokemonById(selectedPokemon.speciesId);
+
+      // Reveal delay
+      await new Promise(r => setTimeout(r, 800));
+
       toast({
         title: 'Trade Complete!',
         description: `${oldSpecies?.name} traded for ${newSpecies?.name}!`,
@@ -101,41 +109,67 @@ const TradePage = () => {
           <Card className="relative overflow-hidden">
             <div className={cn(
               'absolute inset-0 transition-all duration-700',
-              isTrading ? 'bg-pokemon-water/30' : 'bg-gradient-to-br from-pokemon-water/10 to-pokemon-fire/10'
+              isTrading ? 'bg-gradient-to-br from-pokemon-water/30 via-pokemon-psychic/20 to-pokemon-fire/30' : 'bg-gradient-to-br from-pokemon-water/10 to-pokemon-fire/10'
             )} />
-            <CardContent className="relative py-6">
-              <div className="flex items-center justify-center gap-4">
+
+            {/* Trade energy particles */}
+            {isTrading && (
+              <div className="absolute inset-0 overflow-hidden">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="absolute w-2 h-2 rounded-full bg-primary animate-evolution-particle"
+                    style={{
+                      left: `${20 + Math.random() * 60}%`,
+                      animationDelay: `${Math.random() * 1.5}s`,
+                      animationDuration: '1.5s',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            <CardContent className="relative py-8">
+              <div className="flex items-center justify-center gap-6">
                 {/* Trading Away */}
                 <div className={cn(
-                  'text-center transition-all duration-500',
-                  isTrading && 'opacity-30 scale-75'
+                  'text-center transition-all duration-700',
+                  isTrading && 'animate-trade-swirl'
                 )}>
                   <PokemonSprite
                     pokemonId={selectedSpecies.id}
                     name={selectedSpecies.name}
-                    className="w-24 h-24 mx-auto"
+                    className="w-28 h-28 mx-auto"
                   />
                   <p className="font-semibold mt-2">{selectedSpecies.name}</p>
                   <p className="text-xs text-muted-foreground">Trading Away</p>
                 </div>
 
-                {/* Trade Arrow */}
+                {/* Trade Arrow with energy effect */}
                 <div className={cn(
-                  'p-3 rounded-full bg-pokemon-water/20',
-                  isTrading && 'animate-spin'
+                  'p-3 rounded-full transition-all duration-500',
+                  isTrading
+                    ? 'bg-primary/30 shadow-[0_0_30px_hsl(45,93%,58%/0.5)] animate-spin'
+                    : 'bg-pokemon-water/20'
                 )}>
-                  <ArrowLeftRight className="w-6 h-6 text-pokemon-water" />
+                  <ArrowLeftRight className={cn(
+                    'w-7 h-7 transition-colors',
+                    isTrading ? 'text-primary' : 'text-pokemon-water'
+                  )} />
                 </div>
 
                 {/* Receiving */}
                 {tradedPokemon && tradedSpecies ? (
-                  <div className="text-center animate-scale-in">
-                    <PokemonSprite
-                      pokemonId={tradedSpecies.id}
-                      name={tradedSpecies.name}
-                      className="w-24 h-24 mx-auto"
-                      animate
-                    />
+                  <div className="text-center animate-trade-sparkle">
+                    <div className="relative">
+                      <div className="absolute -inset-4 bg-primary/20 rounded-full animate-ping" />
+                      <PokemonSprite
+                        pokemonId={tradedSpecies.id}
+                        name={tradedSpecies.name}
+                        className="w-28 h-28 mx-auto relative z-10"
+                        animate
+                      />
+                    </div>
                     <p className="font-semibold mt-2">{tradedSpecies.name}</p>
                     <div className="flex justify-center gap-1 mt-1">
                       {tradedSpecies.types.map(type => (
@@ -144,8 +178,13 @@ const TradePage = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="w-24 h-24 flex items-center justify-center bg-muted/50 rounded-lg">
-                    <span className="text-4xl">?</span>
+                  <div className={cn(
+                    'w-28 h-28 flex items-center justify-center rounded-lg transition-all duration-500',
+                    isTrading
+                      ? 'bg-primary/10 border-2 border-primary/30 animate-pulse'
+                      : 'bg-muted/50'
+                  )}>
+                    <span className="text-4xl">{isTrading ? '✨' : '?'}</span>
                   </div>
                 )}
               </div>
