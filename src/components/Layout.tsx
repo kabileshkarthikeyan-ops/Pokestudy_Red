@@ -42,12 +42,12 @@ export const Layout = ({ children }: LayoutProps) => {
   }, [state.settings.textSize, state.settings.popupSize]);
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-lg border-b border-border">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Study Pokédex
+            Pokestudy Red
           </h1>
           <CoinCounter coins={state.coins} showAnimation />
         </div>

@@ -458,8 +458,8 @@ const SettingsPage = () => {
         {/* About */}
         <Card>
           <CardContent className="py-4 text-center text-sm text-muted-foreground">
-            <p className="font-semibold text-foreground">Study Time Pokédex</p>
-            <p>Version 2.0.0</p>
+            <p className="font-semibold text-foreground">Pokestudy Red</p>
+            <p>Version 2.0.1</p>
             <p className="mt-2">Turn study time into Pokémon adventures!</p>
           </CardContent>
         </Card>
