@@ -47,7 +47,7 @@ call npm run build
 echo.
 echo [5/8] Initializing Capacitor (if not already done)...
 if not exist "capacitor.config.ts" (
-    call npx cap init "StudyMon Dex" "app.lovable.studymondex" --web-dir dist
+    call npx cap init "Pokestudy Red" "app.lovable.pokestudyred" --web-dir dist
 )
 
 echo.

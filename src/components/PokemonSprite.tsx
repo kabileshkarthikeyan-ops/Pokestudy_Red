@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useGameState } from '@/hooks/useGameState';
 
@@ -29,15 +28,10 @@ export const PokemonSprite = ({
   animate = false,
   sizeOverride 
 }: PokemonSpriteProps) => {
-  const [hasError, setHasError] = useState(false);
   const { state } = useGameState();
   
-  // Use local sprites from public/sprites folder
-  const localSpritePath = `/sprites/${pokemonId}.png`;
-  // Fallback to online if local fails (for development/testing)
-  const onlineSpritePath = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
-  
-  const spriteUrl = hasError ? onlineSpritePath : localSpritePath;
+  // Use local sprites only - fully offline
+  const spriteUrl = `/sprites/${pokemonId}.png`;
   
   const spriteSize = sizeOverride || state.settings.spriteSize || 'medium';
   const sizeClass = SIZE_CLASSES[spriteSize];
@@ -53,7 +47,6 @@ export const PokemonSprite = ({
           className
         )}
         style={{ imageRendering: 'pixelated' }}
-        onError={() => setHasError(true)}
         loading="lazy"
       />
     );
@@ -71,7 +64,6 @@ export const PokemonSprite = ({
         className
       )}
       style={{ imageRendering: 'pixelated' }}
-      onError={() => setHasError(true)}
       loading="lazy"
     />
   );

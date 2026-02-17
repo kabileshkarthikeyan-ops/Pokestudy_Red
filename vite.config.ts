@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => ({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'backgrounds/**/*', 'sprites/**/*', 'icon-192.png', 'icon-512.png'],
       manifest: {
-        name: 'StudyMon Dex',
-        short_name: 'StudyMon',
+        name: 'Pokestudy Red',
+        short_name: 'Pokestudy',
         description: 'A Pokémon-style study tracker that rewards your study sessions',
         theme_color: '#1a1a2e',
         background_color: '#1a1a2e',
@@ -60,19 +60,9 @@ export default defineConfig(({ mode }) => ({
             }
           },
           {
-            // Fallback cache for online sprites (if local fails)
+            // Fallback cache for online sprites (if any somehow load)
             urlPattern: /^https:\/\/raw\.githubusercontent\.com\/PokeAPI\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'pokemon-sprites-fallback',
-              expiration: {
-                maxEntries: 1000,
-                maxAgeSeconds: 60 * 60 * 24 * 365
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
+            handler: 'NetworkOnly',
           }
         ]
       }
