@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useGameState } from '@/hooks/useGameState';
 
@@ -11,7 +12,6 @@ interface PokemonSpriteProps {
   sizeOverride?: 'small' | 'medium' | 'large' | 'xlarge';
 }
 
-// Size multipliers based on settings
 const SIZE_CLASSES = {
   small: 'scale-75',
   medium: 'scale-100',
@@ -19,27 +19,38 @@ const SIZE_CLASSES = {
   xlarge: 'scale-150',
 };
 
-export const PokemonSprite = ({ 
-  pokemonId, 
-  name, 
-  className, 
+// Local sprites first, then PokeAPI CDN fallback for browser preview
+const getLocalUrl = (id: number) => `/sprites/${id}.png`;
+const getCdnUrl = (id: number) =>
+  `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+
+export const PokemonSprite = ({
+  pokemonId,
+  name,
+  className,
   isLocked = false,
   isSilhouette = false,
   animate = false,
-  sizeOverride 
+  sizeOverride,
 }: PokemonSpriteProps) => {
   const { state } = useGameState();
-  
-  // Use local sprites only - fully offline
-  const spriteUrl = `/sprites/${pokemonId}.png`;
-  
+  const [src, setSrc] = useState(getLocalUrl(pokemonId));
+  const [triedCdn, setTriedCdn] = useState(false);
+
   const spriteSize = sizeOverride || state.settings.spriteSize || 'medium';
   const sizeClass = SIZE_CLASSES[spriteSize];
+
+  const handleError = () => {
+    if (!triedCdn) {
+      setTriedCdn(true);
+      setSrc(getCdnUrl(pokemonId));
+    }
+  };
 
   if (isLocked) {
     return (
       <img
-        src={spriteUrl}
+        src={src}
         alt="Unknown Pokemon"
         className={cn(
           'object-contain brightness-0 opacity-50 transition-transform',
@@ -48,13 +59,14 @@ export const PokemonSprite = ({
         )}
         style={{ imageRendering: 'pixelated' }}
         loading="lazy"
+        onError={handleError}
       />
     );
   }
 
   return (
     <img
-      src={spriteUrl}
+      src={src}
       alt={name}
       className={cn(
         'object-contain transition-transform',
@@ -65,6 +77,7 @@ export const PokemonSprite = ({
       )}
       style={{ imageRendering: 'pixelated' }}
       loading="lazy"
+      onError={handleError}
     />
   );
 };
